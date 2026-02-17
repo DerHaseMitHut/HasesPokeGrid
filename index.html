@@ -414,45 +414,74 @@
     .presenter .wrap{ grid-template-columns: auto; }
 
     #otherTip{
-      position: fixed;
-      z-index: 9999;
-      display: none;
-      max-width: 360px;
-      padding: 12px 12px;
-      border-radius: 16px;
-      background: rgba(12,14,22,.92);
-      border: 1px solid rgba(255,255,255,.18);
-      box-shadow: 0 18px 40px rgba(0,0,0,.55);
-      backdrop-filter: blur(10px);
-      color: rgba(255,255,255,.94);
-      pointer-events: none;
-    }
-    #otherTip .otTitle{
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: 1.1px;
-      color: rgba(255,255,255,.72);
-      font-size: 11px;
-      margin-bottom: 8px;
-    }
-    #otherTip .otList{
-      font-size: 13px;
-      line-height: 1.25;
-      white-space: pre-line;
-    }
-    #otherTip .otRow{
-      margin: 7px 0;
-      padding-top: 7px;
-      border-top: 1px solid rgba(255,255,255,.10);
-    }
-    #otherTip .otRow:first-child{ margin-top:0; padding-top:0; border-top:0; }
-    #otherTip .otMon{ font-weight: 950; }
-    #otherTip .otMeta{
-      color: rgba(255,255,255,.72);
-      font-size: 12px;
-      margin-top: 2px;
-      white-space: pre-line;
-    }
+  position: fixed;
+  z-index: 9999;
+  display: none;
+  width: 260px;                 /* klein */
+  max-width: 260px;
+  max-height: 240px;            /* nicht riesig */
+  overflow: auto;               /* scroll statt bild sprengen */
+  padding: 10px 10px;
+  border-radius: 14px;
+  background: rgba(12,14,22,.92);
+  border: 1px solid rgba(255,255,255,.18);
+  box-shadow: 0 18px 40px rgba(0,0,0,.55);
+  backdrop-filter: blur(10px);
+  color: rgba(255,255,255,.94);
+  pointer-events: none;
+}
+
+#otherTip .otTitle{
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
+  color: rgba(255,255,255,.72);
+  font-size: 10px;
+  margin-bottom: 8px;
+}
+
+/* kompakte Liste */
+#otherTip .otList{
+  font-size: 12px;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+#otherTip .otRow{
+  margin: 8px 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.10);
+}
+#otherTip .otRow:first-child{ margin-top:0; padding-top:0; border-top:0; }
+
+#otherTip .otMon{
+  font-weight: 950;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#otherTip .otCount{
+  opacity:.75;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+#otherTip .otMeta{
+  color: rgba(255,255,255,.75);
+  font-size: 11px;
+  margin-top: 3px;
+  white-space: pre-line;        /* Namen je Zeile */
+}
+
+/* optional: schmaler scrollbar look */
+#otherTip::-webkit-scrollbar{ width:10px; }
+#otherTip::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,.12);
+  border-radius: 999px;
+  border: 2px solid rgba(12,14,22,.65);
+}
+
   </style>
 </head>
 
@@ -746,11 +775,7 @@
         if (!html){ hideOtherTip(); return; }
         otherTipList.innerHTML = html;
         otherTip.style.display = 'block';
-        moveOtherTip(e.clientX, e.clientY);
-      });
-
-      c.addEventListener('mousemove', (e) => {
-        if (otherTip.style.display === 'block') moveOtherTip(e.clientX, e.clientY);
+        moveOtherTipNearCell(c);
       });
 
       c.addEventListener('mouseleave', hideOtherTip);
@@ -854,17 +879,33 @@
         .replaceAll('"','&quot;').replaceAll("'","&#039;");
     }
     function hideOtherTip(){ otherTip.style.display = 'none'; }
-    function moveOtherTip(x,y){
-      const pad=14;
-      let left=x+pad, top=y+pad;
-      otherTip.style.left = left+'px';
-      otherTip.style.top  = top+'px';
-      const rect = otherTip.getBoundingClientRect();
-      left = Math.min(left, window.innerWidth - rect.width - 10);
-      top  = Math.min(top,  window.innerHeight - rect.height - 10);
-      otherTip.style.left = left+'px';
-      otherTip.style.top  = top+'px';
-    }
+    function moveOtherTipNearCell(cell){
+  const pad = 10;
+  const r = cell.getBoundingClientRect();
+
+  // default: rechts neben der Zelle
+  let left = r.right + pad;
+  let top  = r.top;
+
+  otherTip.style.left = left + 'px';
+  otherTip.style.top  = top + 'px';
+
+  const tipR = otherTip.getBoundingClientRect();
+
+  // wenn rechts raus -> links platzieren
+  if (left + tipR.width > window.innerWidth - 10){
+    left = r.left - tipR.width - pad;
+  }
+
+  // wenn oben/unten raus -> clamp
+  top = Math.min(top, window.innerHeight - tipR.height - 10);
+  top = Math.max(10, top);
+
+  // final setzen
+  otherTip.style.left = Math.max(10, left) + 'px';
+  otherTip.style.top  = top + 'px';
+}
+
 
     function getPrettyNameFromKey(pokeKey){ return dexByKey.get(pokeKey) || pokeKey; }
 
@@ -885,11 +926,14 @@
       if (!rows.length) return '';
       rows.sort((a,b)=> (b.count-a.count) || a.name.localeCompare(b.name));
       return rows.map(r => `
-        <div class="otRow">
-          <div class="otMon">${escapeHtml(r.name)} <span style="opacity:.75;">(${r.count})</span></div>
-          <div class="otMeta">${escapeHtml(r.who)}</div>
-        </div>
-      `).join('');
+  <div class="otRow">
+    <div class="otMon">
+      <span>${escapeHtml(r.name)}</span>
+      <span class="otCount">(${r.count})</span>
+    </div>
+    <div class="otMeta">${escapeHtml(r.who)}</div>
+  </div>
+`).join('');
     }
 
     // ===== placing pokemon =====
@@ -1207,3 +1251,4 @@
   </script>
 </body>
 </html>
+
