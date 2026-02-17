@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "columns": ["Dieses Pokémon wäre besser als Digimon geeignet", "Dieses Pokémon hasst Kinder", "Dieses Pokémon kann ich im 1v1 ausknocken", "Die Optik dieses Pokémon passt nicht zum Typen", "Dieses Pokémon ist cooler als seine Weiterentwicklung"],
+  "rows": ["Dieses Pokémon plant insgeheim die Weltherrschaft", "Diese alternative Form ist hässlich oder unnötig", "Dieses Pokémon lade ich zum Abendessen bei meinen Eltern ein", "Dieses Pokémon nehme ich zum Survival Urlaub in den Dschungel mit", "Dieses Pokémon hätte einen erfolgreichen TikTok-Account"],
+  "lockTitles": true
+}
