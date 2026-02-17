@@ -413,75 +413,66 @@
     .presenter .panel{ display:none; }
     .presenter .wrap{ grid-template-columns: auto; }
 
+    /* === ANDERE-ANTWORTEN TOOLTIP (KOMPAKT + SCROLL + INTERAKTIV) === */
     #otherTip{
-  position: fixed;
-  z-index: 9999;
-  display: none;
-  width: 260px;                 /* klein */
-  max-width: 260px;
-  max-height: 240px;            /* nicht riesig */
-  overflow: auto;               /* scroll statt bild sprengen */
-  padding: 10px 10px;
-  border-radius: 14px;
-  background: rgba(12,14,22,.92);
-  border: 1px solid rgba(255,255,255,.18);
-  box-shadow: 0 18px 40px rgba(0,0,0,.55);
-  backdrop-filter: blur(10px);
-  color: rgba(255,255,255,.94);
-  pointer-events: none;
-}
-
-#otherTip .otTitle{
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 1.1px;
-  color: rgba(255,255,255,.72);
-  font-size: 10px;
-  margin-bottom: 8px;
-}
-
-/* kompakte Liste */
-#otherTip .otList{
-  font-size: 12px;
-  line-height: 1.25;
-  white-space: normal;
-}
-
-#otherTip .otRow{
-  margin: 8px 0;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255,255,255,.10);
-}
-#otherTip .otRow:first-child{ margin-top:0; padding-top:0; border-top:0; }
-
-#otherTip .otMon{
-  font-weight: 950;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-#otherTip .otCount{
-  opacity:.75;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-#otherTip .otMeta{
-  color: rgba(255,255,255,.75);
-  font-size: 11px;
-  margin-top: 3px;
-  white-space: pre-line;        /* Namen je Zeile */
-}
-
-/* optional: schmaler scrollbar look */
-#otherTip::-webkit-scrollbar{ width:10px; }
-#otherTip::-webkit-scrollbar-thumb{
-  background: rgba(255,255,255,.12);
-  border-radius: 999px;
-  border: 2px solid rgba(12,14,22,.65);
-}
-
+      position: fixed;
+      z-index: 9999;
+      display: none;
+      width: 260px;
+      max-width: 260px;
+      max-height: 240px;
+      overflow: auto;
+      padding: 10px 10px;
+      border-radius: 14px;
+      background: rgba(12,14,22,.92);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 18px 40px rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      color: rgba(255,255,255,.94);
+      pointer-events: auto; /* WICHTIG: damit man scrollen kann */
+    }
+    #otherTip .otTitle{
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1.1px;
+      color: rgba(255,255,255,.72);
+      font-size: 10px;
+      margin-bottom: 8px;
+    }
+    #otherTip .otList{
+      font-size: 12px;
+      line-height: 1.25;
+      white-space: normal;
+    }
+    #otherTip .otRow{
+      margin: 8px 0;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,.10);
+    }
+    #otherTip .otRow:first-child{ margin-top:0; padding-top:0; border-top:0; }
+    #otherTip .otMon{
+      font-weight: 950;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+    }
+    #otherTip .otCount{
+      opacity:.75;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    #otherTip .otMeta{
+      color: rgba(255,255,255,.75);
+      font-size: 11px;
+      margin-top: 3px;
+      white-space: pre-line; /* Namen je Zeile */
+    }
+    #otherTip::-webkit-scrollbar{ width:10px; }
+    #otherTip::-webkit-scrollbar-thumb{
+      background: rgba(255,255,255,.12);
+      border-radius: 999px;
+      border: 2px solid rgba(12,14,22,.65);
+    }
   </style>
 </head>
 
@@ -490,7 +481,7 @@
 
   <div class="wrap">
     <div class="stage" id="stage">
-      <div class="gridframe">
+      <div class="gridframe" id="gridframe">
         <div class="cornerInfo">
           <div class="cornerTitle">Communityscore</div>
           <div class="cornerValue" id="cornerScore">0</div>
@@ -593,11 +584,11 @@
     let presenter = false;
 
     let communityDatasetCount = 0;
-    const communityCounts = new Map();
-    const communityNames = new Map();
+    const communityCounts = new Map();      // "r,c,pokeKey" -> count
+    const communityNames = new Map();       // "r,c,pokeKey" -> Set(names)
     let communityMaxCount = 0;
 
-    const communityCellIndex = new Map();
+    const communityCellIndex = new Map();   // "r,c" -> Map(pokeKey -> {count,names:Set})
     let otherHoverMode = false;
 
     let shinyAudio = new Audio();
@@ -619,6 +610,10 @@
 
     const otherTip = document.getElementById('otherTip');
     const otherTipList = otherTip.querySelector('.otList');
+
+    // === Tooltip hover handling (damit scroll möglich ist) ===
+    let otherTipPinnedCell = null;
+    let hideOtherTipTimer = null;
 
     function toast(msg){
       toastEl.textContent = msg || '';
@@ -755,6 +750,137 @@
       recalcCommunityScore();
     }
 
+    // ===== OTHER TIP (clamped to GRIDFRAME) =====
+    function escapeHtml(s){
+      return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+        .replaceAll('"','&quot;').replaceAll("'","&#039;");
+    }
+
+    function hideOtherTip(){
+      otherTip.style.display = 'none';
+      otherTipPinnedCell = null;
+    }
+
+    function scheduleHideOtherTip(){
+      clearTimeout(hideOtherTipTimer);
+      hideOtherTipTimer = setTimeout(() => {
+        const overTip = otherTip.matches(':hover');
+        const overCell = otherTipPinnedCell && otherTipPinnedCell.matches(':hover');
+        if (!overTip && !overCell) hideOtherTip();
+      }, 140);
+    }
+
+    function moveOtherTipNearCell(cell){
+      const clampBox = document.getElementById('gridframe') || document.querySelector('.gridframe');
+      if (!clampBox) return;
+
+      const pad = 10;
+
+      const boxR  = clampBox.getBoundingClientRect();
+      const cellR = cell.getBoundingClientRect();
+
+      // initial position so tip has layout
+      otherTip.style.left = (cellR.right + pad) + 'px';
+      otherTip.style.top  = (cellR.top) + 'px';
+
+      const tipR = otherTip.getBoundingClientRect();
+
+      const candidates = [
+        { left: cellR.right + pad, top: cellR.top },                        // right
+        { left: cellR.left - tipR.width - pad, top: cellR.top },            // left
+        { left: cellR.left, top: cellR.bottom + pad },                      // bottom
+        { left: cellR.left, top: cellR.top - tipR.height - pad },           // top
+      ];
+
+      const clamp = (pos) => {
+        const leftMin = boxR.left + 8;
+        const topMin  = boxR.top + 8;
+        const leftMax = boxR.right - tipR.width - 8;
+        const topMax  = boxR.bottom - tipR.height - 8;
+
+        return {
+          left: Math.min(Math.max(pos.left, leftMin), leftMax),
+          top:  Math.min(Math.max(pos.top,  topMin),  topMax),
+        };
+      };
+
+      const overflowScore = (pos) => {
+        const l = pos.left, t = pos.top;
+        const r = l + tipR.width, b = t + tipR.height;
+        let s = 0;
+        if (l < boxR.left) s += (boxR.left - l);
+        if (t < boxR.top) s += (boxR.top - t);
+        if (r > boxR.right) s += (r - boxR.right);
+        if (b > boxR.bottom) s += (b - boxR.bottom);
+        return s;
+      };
+
+      let best = candidates[0], bestScore = Infinity;
+      for (const c of candidates){
+        const s = overflowScore(c);
+        if (s < bestScore){ bestScore = s; best = c; }
+        if (s === 0) break;
+      }
+
+      const finalPos = clamp(best);
+      otherTip.style.left = finalPos.left + 'px';
+      otherTip.style.top  = finalPos.top + 'px';
+    }
+
+    function showOtherTipForCell(cell, html){
+      otherTipList.innerHTML = html;
+      otherTip.style.display = 'block';
+      otherTipPinnedCell = cell;
+      moveOtherTipNearCell(cell);
+      clearTimeout(hideOtherTipTimer);
+    }
+
+    otherTip.addEventListener('mouseenter', () => {
+      clearTimeout(hideOtherTipTimer);
+    });
+    otherTip.addEventListener('mouseleave', () => {
+      scheduleHideOtherTip();
+    });
+
+    function getPrettyNameFromKey(pokeKey){ return dexByKey.get(pokeKey) || pokeKey; }
+
+    function buildOtherAnswersHtmlForCell(cell){
+      const idx = cell.dataset.idx;
+      if (idx == null) return '';
+      const {r,c} = idxToRC(idx);
+
+      const cellKey = `${r},${c}`;
+      const byMon = communityCellIndex.get(cellKey);
+      if (!byMon) return '';
+
+      const currentKey = cell.dataset.pokeKey || '';
+      const rows = [];
+
+      for (const [k, rec] of byMon.entries()){
+        if (!k || k === currentKey) continue;
+        const names = rec.names ? [...rec.names].sort((a,b)=>a.localeCompare(b)) : [];
+        rows.push({
+          name: getPrettyNameFromKey(k),
+          count: rec.count||0,
+          who: names.length ? names.join('\n') : '—'
+        });
+      }
+
+      if (!rows.length) return '';
+      rows.sort((a,b)=> (b.count-a.count) || a.name.localeCompare(b.name));
+
+      return rows.map(r => `
+        <div class="otRow">
+          <div class="otMon">
+            <span>${escapeHtml(r.name)}</span>
+            <span class="otCount">(${r.count})</span>
+          </div>
+          <div class="otMeta">${escapeHtml(r.who)}</div>
+        </div>
+      `).join('');
+    }
+
+    // cell events
     cells.forEach((c, idx) => {
       c.dataset.idx = String(idx);
 
@@ -766,21 +892,23 @@
         selectCell(c);
       });
 
-      c.addEventListener('mouseenter', (e) => {
+      c.addEventListener('mouseenter', () => {
         if (!otherHoverMode) return;
         if (!c.dataset.pid) return;
         if (communityDatasetCount <= 0) return;
 
         const html = buildOtherAnswersHtmlForCell(c);
         if (!html){ hideOtherTip(); return; }
-        otherTipList.innerHTML = html;
-        otherTip.style.display = 'block';
-        moveOtherTipNearCell(c);
+        showOtherTipForCell(c, html);
       });
 
-      c.addEventListener('mouseleave', hideOtherTip);
+      c.addEventListener('mouseleave', () => {
+        if (!otherHoverMode) return;
+        scheduleHideOtherTip();
+      });
     });
 
+    // ===== random/reset =====
     function randomEmptyCell(){
       const empties = cells.filter(isEmpty);
       if (!empties.length){ toast('Keine leeren Felder mehr.'); return null; }
@@ -792,6 +920,7 @@
     }
 
     function resetGrid(){
+      hideOtherTip();
       cells.forEach(c => {
         c.classList.remove('marked','selected','delete-mode');
         c.dataset.pid = '';
@@ -871,111 +1000,6 @@
         if (count > 0) score += count;
       }
       scoreEl.textContent = String(score);
-    }
-
-    // ===== other answers tooltip =====
-    function escapeHtml(s){
-      return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
-        .replaceAll('"','&quot;').replaceAll("'","&#039;");
-    }
-    function hideOtherTip(){ otherTip.style.display = 'none'; }
-    function moveOtherTipNearCell(cell){
-  const stage = document.getElementById('stage') || document.querySelector('.stage');
-  if (!stage) return;
-
-  const pad = 10;
-
-  const stageR = stage.getBoundingClientRect();
-  const cellR  = cell.getBoundingClientRect();
-
-  // Tooltip zuerst "sichtbar" positionieren, damit wir Maße bekommen
-  otherTip.style.left = (cellR.right + pad) + 'px';
-  otherTip.style.top  = (cellR.top) + 'px';
-
-  const tipR = otherTip.getBoundingClientRect();
-
-  // Kandidaten-Positionen: rechts/links + oben/unterhalb
-  const candidates = [
-    { left: cellR.right + pad, top: cellR.top },                          // rechts
-    { left: cellR.left - tipR.width - pad, top: cellR.top },              // links
-    { left: cellR.left, top: cellR.bottom + pad },                        // unten
-    { left: cellR.left, top: cellR.top - tipR.height - pad },             // oben
-  ];
-
-  // Helper: clamp innerhalb stage
-  const clampToStage = (pos) => {
-    const leftMin = stageR.left + 10;
-    const topMin  = stageR.top + 10;
-    const leftMax = stageR.right - tipR.width - 10;
-    const topMax  = stageR.bottom - tipR.height - 10;
-
-    return {
-      left: Math.min(Math.max(pos.left, leftMin), leftMax),
-      top:  Math.min(Math.max(pos.top, topMin),  topMax),
-    };
-  };
-
-  // Helper: wie viel ragt raus? (0 = perfekt)
-  const overflowScore = (pos) => {
-    const l = pos.left, t = pos.top;
-    const r = l + tipR.width, b = t + tipR.height;
-    let score = 0;
-    if (l < stageR.left) score += (stageR.left - l);
-    if (t < stageR.top) score += (stageR.top - t);
-    if (r > stageR.right) score += (r - stageR.right);
-    if (b > stageR.bottom) score += (b - stageR.bottom);
-    return score;
-  };
-
-  // beste Position auswählen (erst ideal, sonst die mit geringstem overflow)
-  let best = candidates[0];
-  let bestScore = Infinity;
-
-  for (const c of candidates){
-    const s = overflowScore(c);
-    if (s < bestScore){
-      bestScore = s;
-      best = c;
-    }
-    if (s === 0) break;
-  }
-
-  // final: hart in stage clampen
-  const finalPos = clampToStage(best);
-
-  otherTip.style.left = finalPos.left + 'px';
-  otherTip.style.top  = finalPos.top + 'px';
-}
-
-
-
-    function getPrettyNameFromKey(pokeKey){ return dexByKey.get(pokeKey) || pokeKey; }
-
-    function buildOtherAnswersHtmlForCell(cell){
-      const idx = cell.dataset.idx;
-      if (idx == null) return '';
-      const {r,c} = idxToRC(idx);
-      const cellKey = `${r},${c}`;
-      const byMon = communityCellIndex.get(cellKey);
-      if (!byMon) return '';
-      const currentKey = cell.dataset.pokeKey || '';
-      const rows = [];
-      for (const [k, rec] of byMon.entries()){
-        if (!k || k === currentKey) continue;
-        const names = rec.names ? [...rec.names].sort((a,b)=>a.localeCompare(b)) : [];
-        rows.push({ name: getPrettyNameFromKey(k), count: rec.count||0, who: names.length?names.join('\n'):'—' });
-      }
-      if (!rows.length) return '';
-      rows.sort((a,b)=> (b.count-a.count) || a.name.localeCompare(b.name));
-      return rows.map(r => `
-  <div class="otRow">
-    <div class="otMon">
-      <span>${escapeHtml(r.name)}</span>
-      <span class="otCount">(${r.count})</span>
-    </div>
-    <div class="otMeta">${escapeHtml(r.who)}</div>
-  </div>
-`).join('');
     }
 
     // ===== placing pokemon =====
@@ -1108,6 +1132,28 @@
     });
     document.addEventListener('click', (e) => { if (!e.target.closest('.field')) hideDD(); });
 
+    // ===== background picker (optional local) =====
+    let bgObjectUrl = null;
+    async function pickBackground(){
+      try{
+        const [fh] = await window.showOpenFilePicker({
+          types: [{ description:'Bilder', accept: { 'image/*': ['.png','.jpg','.jpeg','.webp','.gif'] } }],
+          multiple:false
+        });
+        const file = await fh.getFile();
+        if (bgObjectUrl) URL.revokeObjectURL(bgObjectUrl);
+        bgObjectUrl = URL.createObjectURL(file);
+        bgLayer.style.backgroundImage = `url("${bgObjectUrl}")`;
+        bgLayer.style.opacity = '0.55';
+      }catch{}
+    }
+    function clearBackground(){
+      if (bgObjectUrl) URL.revokeObjectURL(bgObjectUrl);
+      bgObjectUrl = null;
+      bgLayer.style.backgroundImage = '';
+      bgLayer.style.opacity = '0';
+    }
+
     // ===== export/import community =====
     function downloadJson(obj, filename){
       const blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
@@ -1193,6 +1239,7 @@
     }
 
     function clearCommunity(){
+      hideOtherTip();
       communityDatasetCount = 0;
       communityCounts.clear();
       communityNames.clear();
@@ -1200,7 +1247,6 @@
       communityMaxCount = 0;
       setCommStatus();
       refreshAllCommunityOverlays();
-      hideOtherTip();
     }
 
     // ===== controls =====
@@ -1224,6 +1270,9 @@
       if (confirm('Community-Daten wirklich löschen?')) clearCommunity();
     });
 
+    document.getElementById('bgPickBtn').addEventListener('click', pickBackground);
+    document.getElementById('bgClearBtn').addEventListener('click', clearBackground);
+
     const presenterBtn = document.getElementById('presenterBtn');
     function togglePresenter(){
       presenter = !presenter;
@@ -1243,13 +1292,12 @@
     });
     updateOtherHoverBtn();
 
-    // init UI
-    selectCell(cells[0]);
-    randomEmptyCell();
-    setCommStatus();
-    recalcCommunityScore();
-
-    window.addEventListener('resize', () => headerSpans.forEach(sp => fitHeaderText(sp)));
+    document.addEventListener('keydown', (e) => {
+      if (e.target.matches('input,[contenteditable="true"]')) return;
+      if (e.key.toLowerCase() === 'r') randomEmptyCell();
+      if (e.key.toLowerCase() === 'd') setDeleteMode(!deleteMode);
+      if (e.key.toLowerCase() === 'h') togglePresenter();
+    });
 
     // ===== Hosted init =====
     async function initHosted(){
@@ -1289,9 +1337,18 @@
       }
     }
 
+    // init UI
+    selectCell(cells[0]);
+    randomEmptyCell();
+    setCommStatus();
+    recalcCommunityScore();
+
+    window.addEventListener('resize', () => {
+      headerSpans.forEach(sp => fitHeaderText(sp));
+      if (otherTip.style.display === 'block' && otherTipPinnedCell) moveOtherTipNearCell(otherTipPinnedCell);
+    });
+
     initHosted();
   </script>
 </body>
 </html>
-
-
