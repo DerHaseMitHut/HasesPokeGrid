@@ -238,6 +238,7 @@
       align-items:center;
       justify-content:center;
       min-width:24px;
+      cursor: default;
     }
 
     .commTip{
@@ -314,6 +315,78 @@
       height: 120%;
       object-fit: contain;
       filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
+    }
+
+    /* ===== INLAY: Community-Antworten (andere) direkt im Feld ===== */
+    .cell .inlayOverlay{
+      position:absolute;
+      inset: 8px;
+      border-radius: 14px;
+      background: rgba(12,14,22,.92);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 18px 40px rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      color: rgba(255,255,255,.94);
+      z-index: 60;
+      display: none;
+      padding: 10px 10px;
+      overflow: hidden;
+      pointer-events: auto; /* wichtig: scroll möglich */
+    }
+    .cell .inlayOverlay.show{ display:block; }
+
+    .cell .inlayTitle{
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1.1px;
+      font-size: 10px;
+      color: rgba(255,255,255,.72);
+      margin-bottom: 8px;
+    }
+
+    .cell .inlayList{
+      font-size: 12px;
+      line-height: 1.25;
+      max-height: calc(100% - 18px);
+      overflow: auto;
+      padding-right: 4px;
+      white-space: normal;
+    }
+
+    .cell .inlayRow{
+      margin: 8px 0;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,.10);
+    }
+    .cell .inlayRow:first-child{
+      margin-top:0; padding-top:0; border-top:0;
+    }
+
+    .cell .inlayMon{
+      font-weight: 950;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .cell .inlayCount{
+      opacity:.75;
+      font-weight:900;
+      white-space:nowrap;
+    }
+
+    .cell .inlayMeta{
+      color: rgba(255,255,255,.75);
+      font-size: 11px;
+      margin-top: 3px;
+      white-space: pre-line; /* Namen je Zeile */
+    }
+
+    .cell .inlayList::-webkit-scrollbar{ width:10px; }
+    .cell .inlayList::-webkit-scrollbar-thumb{
+      background: rgba(255,255,255,.12);
+      border-radius: 999px;
+      border: 2px solid rgba(12,14,22,.65);
     }
 
     .panel{
@@ -412,67 +485,6 @@
 
     .presenter .panel{ display:none; }
     .presenter .wrap{ grid-template-columns: auto; }
-
-    /* === ANDERE-ANTWORTEN TOOLTIP (KOMPAKT + SCROLL + INTERAKTIV) === */
-    #otherTip{
-      position: fixed;
-      z-index: 9999;
-      display: none;
-      width: 260px;
-      max-width: 260px;
-      max-height: 240px;
-      overflow: auto;
-      padding: 10px 10px;
-      border-radius: 14px;
-      background: rgba(12,14,22,.92);
-      border: 1px solid rgba(255,255,255,.18);
-      box-shadow: 0 18px 40px rgba(0,0,0,.55);
-      backdrop-filter: blur(10px);
-      color: rgba(255,255,255,.94);
-      pointer-events: auto; /* WICHTIG: damit man scrollen kann */
-    }
-    #otherTip .otTitle{
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: 1.1px;
-      color: rgba(255,255,255,.72);
-      font-size: 10px;
-      margin-bottom: 8px;
-    }
-    #otherTip .otList{
-      font-size: 12px;
-      line-height: 1.25;
-      white-space: normal;
-    }
-    #otherTip .otRow{
-      margin: 8px 0;
-      padding-top: 8px;
-      border-top: 1px solid rgba(255,255,255,.10);
-    }
-    #otherTip .otRow:first-child{ margin-top:0; padding-top:0; border-top:0; }
-    #otherTip .otMon{
-      font-weight: 950;
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-    }
-    #otherTip .otCount{
-      opacity:.75;
-      font-weight:900;
-      white-space:nowrap;
-    }
-    #otherTip .otMeta{
-      color: rgba(255,255,255,.75);
-      font-size: 11px;
-      margin-top: 3px;
-      white-space: pre-line; /* Namen je Zeile */
-    }
-    #otherTip::-webkit-scrollbar{ width:10px; }
-    #otherTip::-webkit-scrollbar-thumb{
-      background: rgba(255,255,255,.12);
-      border-radius: 999px;
-      border: 2px solid rgba(12,14,22,.65);
-    }
   </style>
 </head>
 
@@ -547,13 +559,8 @@
     </div>
   </div>
 
-  <div id="otherTip">
-    <div class="otTitle">Community-Antworten (andere)</div>
-    <div class="otList"></div>
-  </div>
-
   <script>
-    // ========= HOSTED CONFIG (FEST) =========
+    // ========= HOSTED CONFIG =========
     const GITHUB_USER = "DerHaseMitHut";
     const ASSETS_REPO = "HasesPokeGrid-Assets";
     const ASSET_BASE = `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${ASSETS_REPO}@main`;
@@ -608,13 +615,7 @@
     const cryVolEl = document.getElementById('cryVol');
     const shinyVolEl = document.getElementById('shinyVol');
 
-    const otherTip = document.getElementById('otherTip');
-    const otherTipList = otherTip.querySelector('.otList');
-
-    // === Tooltip hover handling (damit scroll möglich ist) ===
-    let otherTipPinnedCell = null;
-    let hideOtherTipTimer = null;
-
+    // ========= helpers =========
     function toast(msg){
       toastEl.textContent = msg || '';
       if (msg) setTimeout(() => { if (toastEl.textContent === msg) toastEl.textContent=''; }, 2400);
@@ -659,6 +660,11 @@
 
     function baseNameNoExt(filename){
       return String(filename || '').split(/[\\/]/).pop().replace(/\.json$/i,'').trim();
+    }
+
+    function escapeHtml(s){
+      return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+        .replaceAll('"','&quot;').replaceAll("'","&#039;");
     }
 
     // ===== header fit (shrink until it fits) =====
@@ -742,7 +748,9 @@
       cell.classList.add('selected');
     }
     function isEmpty(cell){ return !cell.dataset.pid; }
+
     function clearCell(cell){
+      hideInlay(cell);
       cell.dataset.pid = '';
       cell.dataset.pokeKey = '';
       cell.innerHTML = '<div class="hint">leer</div>';
@@ -750,97 +758,40 @@
       recalcCommunityScore();
     }
 
-    // ===== OTHER TIP (clamped to GRIDFRAME) =====
-    function escapeHtml(s){
-      return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
-        .replaceAll('"','&quot;').replaceAll("'","&#039;");
+    // ===== INLAY overlay helpers =====
+    function ensureInlayOverlay(cell){
+      let ov = cell.querySelector('.inlayOverlay');
+      if (ov) return ov;
+
+      ov = document.createElement('div');
+      ov.className = 'inlayOverlay';
+      ov.innerHTML = `
+        <div class="inlayTitle">Community-Antworten (andere)</div>
+        <div class="inlayList"></div>
+      `;
+      cell.appendChild(ov);
+
+      // Wenn man mit der Maus ins Overlay geht, soll es bleiben (für Scroll)
+      ov.addEventListener('mouseenter', () => ov.classList.add('show'));
+      ov.addEventListener('mouseleave', () => ov.classList.remove('show'));
+
+      return ov;
     }
 
-    function hideOtherTip(){
-      otherTip.style.display = 'none';
-      otherTipPinnedCell = null;
+    function showInlay(cell, html){
+      const ov = ensureInlayOverlay(cell);
+      ov.querySelector('.inlayList').innerHTML = html;
+      ov.classList.add('show');
     }
 
-    function scheduleHideOtherTip(){
-      clearTimeout(hideOtherTipTimer);
-      hideOtherTipTimer = setTimeout(() => {
-        const overTip = otherTip.matches(':hover');
-        const overCell = otherTipPinnedCell && otherTipPinnedCell.matches(':hover');
-        if (!overTip && !overCell) hideOtherTip();
-      }, 140);
+    function hideInlay(cell){
+      const ov = cell.querySelector('.inlayOverlay');
+      if (ov) ov.classList.remove('show');
     }
 
-    function moveOtherTipNearCell(cell){
-      const clampBox = document.getElementById('gridframe') || document.querySelector('.gridframe');
-      if (!clampBox) return;
-
-      const pad = 10;
-
-      const boxR  = clampBox.getBoundingClientRect();
-      const cellR = cell.getBoundingClientRect();
-
-      // initial position so tip has layout
-      otherTip.style.left = (cellR.right + pad) + 'px';
-      otherTip.style.top  = (cellR.top) + 'px';
-
-      const tipR = otherTip.getBoundingClientRect();
-
-      const candidates = [
-        { left: cellR.right + pad, top: cellR.top },                        // right
-        { left: cellR.left - tipR.width - pad, top: cellR.top },            // left
-        { left: cellR.left, top: cellR.bottom + pad },                      // bottom
-        { left: cellR.left, top: cellR.top - tipR.height - pad },           // top
-      ];
-
-      const clamp = (pos) => {
-        const leftMin = boxR.left + 8;
-        const topMin  = boxR.top + 8;
-        const leftMax = boxR.right - tipR.width - 8;
-        const topMax  = boxR.bottom - tipR.height - 8;
-
-        return {
-          left: Math.min(Math.max(pos.left, leftMin), leftMax),
-          top:  Math.min(Math.max(pos.top,  topMin),  topMax),
-        };
-      };
-
-      const overflowScore = (pos) => {
-        const l = pos.left, t = pos.top;
-        const r = l + tipR.width, b = t + tipR.height;
-        let s = 0;
-        if (l < boxR.left) s += (boxR.left - l);
-        if (t < boxR.top) s += (boxR.top - t);
-        if (r > boxR.right) s += (r - boxR.right);
-        if (b > boxR.bottom) s += (b - boxR.bottom);
-        return s;
-      };
-
-      let best = candidates[0], bestScore = Infinity;
-      for (const c of candidates){
-        const s = overflowScore(c);
-        if (s < bestScore){ bestScore = s; best = c; }
-        if (s === 0) break;
-      }
-
-      const finalPos = clamp(best);
-      otherTip.style.left = finalPos.left + 'px';
-      otherTip.style.top  = finalPos.top + 'px';
+    function hideAllInlays(){
+      cells.forEach(hideInlay);
     }
-
-    function showOtherTipForCell(cell, html){
-      otherTipList.innerHTML = html;
-      otherTip.style.display = 'block';
-      otherTipPinnedCell = cell;
-      moveOtherTipNearCell(cell);
-      clearTimeout(hideOtherTipTimer);
-    }
-
-    otherTip.addEventListener('mouseenter', () => {
-      clearTimeout(hideOtherTipTimer);
-    });
-    otherTip.addEventListener('mouseleave', () => {
-      scheduleHideOtherTip();
-    });
 
     function getPrettyNameFromKey(pokeKey){ return dexByKey.get(pokeKey) || pokeKey; }
 
@@ -870,12 +821,12 @@
       rows.sort((a,b)=> (b.count-a.count) || a.name.localeCompare(b.name));
 
       return rows.map(r => `
-        <div class="otRow">
-          <div class="otMon">
+        <div class="inlayRow">
+          <div class="inlayMon">
             <span>${escapeHtml(r.name)}</span>
-            <span class="otCount">(${r.count})</span>
+            <span class="inlayCount">(${r.count})</span>
           </div>
-          <div class="otMeta">${escapeHtml(r.who)}</div>
+          <div class="inlayMeta">${escapeHtml(r.who)}</div>
         </div>
       `).join('');
     }
@@ -898,13 +849,12 @@
         if (communityDatasetCount <= 0) return;
 
         const html = buildOtherAnswersHtmlForCell(c);
-        if (!html){ hideOtherTip(); return; }
-        showOtherTipForCell(c, html);
+        if (!html){ hideInlay(c); return; }
+        showInlay(c, html);
       });
 
       c.addEventListener('mouseleave', () => {
-        if (!otherHoverMode) return;
-        scheduleHideOtherTip();
+        hideInlay(c);
       });
     });
 
@@ -920,7 +870,7 @@
     }
 
     function resetGrid(){
-      hideOtherTip();
+      hideAllInlays();
       cells.forEach(c => {
         c.classList.remove('marked','selected','delete-mode');
         c.dataset.pid = '';
@@ -1048,6 +998,8 @@
       if (!selectedCell) randomEmptyCell();
       if (!selectedCell) return;
 
+      hideInlay(selectedCell); // Overlay weg wenn wir setzen
+
       const wantShiny = Math.random() < SHINY_CHANCE;
       const url = await loadImageUrlById(entry.id, wantShiny);
 
@@ -1132,7 +1084,7 @@
     });
     document.addEventListener('click', (e) => { if (!e.target.closest('.field')) hideDD(); });
 
-    // ===== background picker (optional local) =====
+    // ===== background picker (optional local; nur Chrome/Edge) =====
     let bgObjectUrl = null;
     async function pickBackground(){
       try{
@@ -1239,7 +1191,7 @@
     }
 
     function clearCommunity(){
-      hideOtherTip();
+      hideAllInlays();
       communityDatasetCount = 0;
       communityCounts.clear();
       communityNames.clear();
@@ -1250,7 +1202,10 @@
     }
 
     // ===== controls =====
-    document.getElementById('randomBtn').addEventListener('click', randomEmptyCell);
+    document.getElementById('randomBtn').addEventListener('click', () => {
+      hideAllInlays();
+      randomEmptyCell();
+    });
 
     const deleteBtn = document.getElementById('deleteBtn');
     function setDeleteMode(on){
@@ -1277,7 +1232,7 @@
     function togglePresenter(){
       presenter = !presenter;
       document.body.classList.toggle('presenter', presenter);
-      hideOtherTip();
+      hideAllInlays();
     }
     presenterBtn.addEventListener('click', togglePresenter);
 
@@ -1288,13 +1243,13 @@
     otherHoverBtn.addEventListener('click', () => {
       otherHoverMode = !otherHoverMode;
       updateOtherHoverBtn();
-      hideOtherTip();
+      if (!otherHoverMode) hideAllInlays();
     });
     updateOtherHoverBtn();
 
     document.addEventListener('keydown', (e) => {
       if (e.target.matches('input,[contenteditable="true"]')) return;
-      if (e.key.toLowerCase() === 'r') randomEmptyCell();
+      if (e.key.toLowerCase() === 'r') { hideAllInlays(); randomEmptyCell(); }
       if (e.key.toLowerCase() === 'd') setDeleteMode(!deleteMode);
       if (e.key.toLowerCase() === 'h') togglePresenter();
     });
@@ -1345,7 +1300,6 @@
 
     window.addEventListener('resize', () => {
       headerSpans.forEach(sp => fitHeaderText(sp));
-      if (otherTip.style.display === 'block' && otherTipPinnedCell) moveOtherTipNearCell(otherTipPinnedCell);
     });
 
     initHosted();
