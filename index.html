@@ -489,7 +489,7 @@
   <div id="bgLayer"></div>
 
   <div class="wrap">
-    <div class="stage">
+    <div class="stage" id="stage">
       <div class="gridframe">
         <div class="cornerInfo">
           <div class="cornerTitle">Communityscore</div>
@@ -880,31 +880,73 @@
     }
     function hideOtherTip(){ otherTip.style.display = 'none'; }
     function moveOtherTipNearCell(cell){
+  const stage = document.getElementById('stage') || document.querySelector('.stage');
+  if (!stage) return;
+
   const pad = 10;
-  const r = cell.getBoundingClientRect();
 
-  // default: rechts neben der Zelle
-  let left = r.right + pad;
-  let top  = r.top;
+  const stageR = stage.getBoundingClientRect();
+  const cellR  = cell.getBoundingClientRect();
 
-  otherTip.style.left = left + 'px';
-  otherTip.style.top  = top + 'px';
+  // Tooltip zuerst "sichtbar" positionieren, damit wir Maße bekommen
+  otherTip.style.left = (cellR.right + pad) + 'px';
+  otherTip.style.top  = (cellR.top) + 'px';
 
   const tipR = otherTip.getBoundingClientRect();
 
-  // wenn rechts raus -> links platzieren
-  if (left + tipR.width > window.innerWidth - 10){
-    left = r.left - tipR.width - pad;
+  // Kandidaten-Positionen: rechts/links + oben/unterhalb
+  const candidates = [
+    { left: cellR.right + pad, top: cellR.top },                          // rechts
+    { left: cellR.left - tipR.width - pad, top: cellR.top },              // links
+    { left: cellR.left, top: cellR.bottom + pad },                        // unten
+    { left: cellR.left, top: cellR.top - tipR.height - pad },             // oben
+  ];
+
+  // Helper: clamp innerhalb stage
+  const clampToStage = (pos) => {
+    const leftMin = stageR.left + 10;
+    const topMin  = stageR.top + 10;
+    const leftMax = stageR.right - tipR.width - 10;
+    const topMax  = stageR.bottom - tipR.height - 10;
+
+    return {
+      left: Math.min(Math.max(pos.left, leftMin), leftMax),
+      top:  Math.min(Math.max(pos.top, topMin),  topMax),
+    };
+  };
+
+  // Helper: wie viel ragt raus? (0 = perfekt)
+  const overflowScore = (pos) => {
+    const l = pos.left, t = pos.top;
+    const r = l + tipR.width, b = t + tipR.height;
+    let score = 0;
+    if (l < stageR.left) score += (stageR.left - l);
+    if (t < stageR.top) score += (stageR.top - t);
+    if (r > stageR.right) score += (r - stageR.right);
+    if (b > stageR.bottom) score += (b - stageR.bottom);
+    return score;
+  };
+
+  // beste Position auswählen (erst ideal, sonst die mit geringstem overflow)
+  let best = candidates[0];
+  let bestScore = Infinity;
+
+  for (const c of candidates){
+    const s = overflowScore(c);
+    if (s < bestScore){
+      bestScore = s;
+      best = c;
+    }
+    if (s === 0) break;
   }
 
-  // wenn oben/unten raus -> clamp
-  top = Math.min(top, window.innerHeight - tipR.height - 10);
-  top = Math.max(10, top);
+  // final: hart in stage clampen
+  const finalPos = clampToStage(best);
 
-  // final setzen
-  otherTip.style.left = Math.max(10, left) + 'px';
-  otherTip.style.top  = top + 'px';
+  otherTip.style.left = finalPos.left + 'px';
+  otherTip.style.top  = finalPos.top + 'px';
 }
+
 
 
     function getPrettyNameFromKey(pokeKey){ return dexByKey.get(pokeKey) || pokeKey; }
@@ -1251,4 +1293,5 @@
   </script>
 </body>
 </html>
+
 
