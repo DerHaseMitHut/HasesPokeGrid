@@ -9,8 +9,6 @@
     :root{
       --stageH: min(920px, calc(100vh - 44px));
       --stageW: min(1220px, calc(100vw - 420px));
-
-      /* schmaler machen, wenn du willst: 160–190px */
       --labelW: 170px;
       --headerH: 96px;
       --gap: 12px;
@@ -535,18 +533,11 @@
   </div>
 
   <script>
-    // ========= HOSTED CONFIG =========
-    // ✅ HIER NUR DEINEN USERNAME EINTRAGEN:
+    // ========= HOSTED CONFIG (FEST) =========
     const GITHUB_USER = "DerHaseMitHut";
-
-    // Repo-Namen (so wie du sie angelegt hast)
-    const TOOL_REPO = "HasesPokeGrid";
-    const ASSETS_REPO = "HasesPokeGrid-Assets"; // <- falls dein Repo anders heißt, hier ändern
-
-    // jsDelivr CDN: branch "main"
+    const ASSETS_REPO = "HasesPokeGrid-Assets";
     const ASSET_BASE = `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${ASSETS_REPO}@main`;
 
-    // JSONs liegen im Pages-Repo neben index.html
     const MAPPING_URL = `./dex_de.json`;
     const PRESET_URL  = `./grid_preset.json`;
 
@@ -558,7 +549,6 @@
     const SHINY_SOUND_URL   = `${ASSET_BASE}/ShinySound.mp3`;
 
     // ========= CONFIG =========
-    const MAX_HEADER_LINES = 6;
     const SHINY_CHANCE = 0.05;
     const SPARKLE_DURATION_MS = 1000;
 
@@ -574,11 +564,11 @@
     let presenter = false;
 
     let communityDatasetCount = 0;
-    const communityCounts = new Map(); // "r,c,pokeKey" -> count
-    const communityNames = new Map();  // "r,c,pokeKey" -> Set(name)
+    const communityCounts = new Map();
+    const communityNames = new Map();
     let communityMaxCount = 0;
 
-    const communityCellIndex = new Map(); // "r,c" -> Map(pokeKey -> {count,names:Set})
+    const communityCellIndex = new Map();
     let otherHoverMode = false;
 
     let shinyAudio = new Audio();
@@ -617,14 +607,12 @@
       if (s != null) shinyVolEl.value = String(Math.max(0, Math.min(100, Number(s))));
     }
     function applyCryVolume(){
-      const v = clamp01(Number(cryVolEl.value ?? 25) / 100);
-      cryAudio.volume = v;
-      localStorage.setItem(LS_CRY_VOL, String(Math.round(v * 100)));
+      cryAudio.volume = clamp01(Number(cryVolEl.value ?? 25) / 100);
+      localStorage.setItem(LS_CRY_VOL, String(cryVolEl.value));
     }
     function applyShinyVolume(){
-      const v = clamp01(Number(shinyVolEl.value ?? 55) / 100);
-      shinyAudio.volume = v;
-      localStorage.setItem(LS_SHINY_VOL, String(Math.round(v * 100)));
+      shinyAudio.volume = clamp01(Number(shinyVolEl.value ?? 55) / 100);
+      localStorage.setItem(LS_SHINY_VOL, String(shinyVolEl.value));
     }
 
     loadVolumePrefs();
@@ -638,16 +626,18 @@
       return { r: Math.floor(i/5), c: i % 5 };
     }
     function overlayKey(r,c,pokeKey){ return `${r},${c},${pokeKey}`; }
+
     function normKey(s){
-      s = (s||'').trim().toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
-      s = s.replace(/ß/g,'ss').replace(/[^a-z0-9\s\-']/g,' ').replace(/-/g,' ').replace(/\s+/g,' ').trim();
+      s = (s||'').trim().toLowerCase().replace(/ß/g,'ss').normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
+      s = s.replace(/[^a-z0-9\s\-']/g,' ').replace(/-/g,' ').replace(/\s+/g,' ').trim();
       return s;
     }
+
     function baseNameNoExt(filename){
       return String(filename || '').split(/[\\/]/).pop().replace(/\.json$/i,'').trim();
     }
 
-    // ===== header fit (no clamp; shrink until it fits) =====
+    // ===== header fit (shrink until it fits) =====
     const measureEl = document.createElement('div');
     measureEl.style.position = 'fixed';
     measureEl.style.left = '-99999px';
@@ -692,7 +682,6 @@
       span.style.fontSize = min + 'px';
     }
 
-    // ===== inline edit headers =====
     function startEditHeader(span){
       if (span.isContentEditable) return;
       span.dataset.prev = span.textContent;
@@ -793,45 +782,14 @@
     }
 
     // ===== community overlays =====
-    function setOrUpdateBadge(cell, count, namesMultiline){
-      const existingWrap = cell.querySelector('.commBadgeWrap');
-      if (!count || count <= 0){
-        if (existingWrap) existingWrap.remove();
-        return;
-      }
-
-      const list = namesMultiline || '';
-      if (existingWrap){
-        existingWrap.querySelector('.commBadge').textContent = String(count);
-        existingWrap.querySelector('.commTip').textContent = '';
-        const tip = existingWrap.querySelector('.commTip');
-        tip.innerHTML = `<div class="tTitle">Wer hatte das hier?</div>${escapeHtml(list||'—')}`;
-        return;
-      }
-
-      const wrap = document.createElement('div');
-      wrap.className = 'commBadgeWrap';
-
-      const badge = document.createElement('div');
-      badge.className = 'commBadge';
-      badge.textContent = String(count);
-
-      const tip = document.createElement('div');
-      tip.className = 'commTip';
-      tip.innerHTML = `<div class="tTitle">Wer hatte das hier?</div>${escapeHtml(list||'—')}`;
-
-      wrap.appendChild(badge);
-      wrap.appendChild(tip);
-      cell.appendChild(wrap);
-    }
-
     function updateCommunityOverlayForCell(cell){
       const pokeKey = cell.dataset.pokeKey || '';
       const idx = cell.dataset.idx;
       if (!pokeKey || idx == null){
         cell.classList.remove('comm-hit');
         cell.style.removeProperty('--commAlpha');
-        setOrUpdateBadge(cell, 0, '');
+        const wrap = cell.querySelector('.commBadgeWrap');
+        if (wrap) wrap.remove();
         return;
       }
 
@@ -842,7 +800,8 @@
       if (count <= 0){
         cell.classList.remove('comm-hit');
         cell.style.removeProperty('--commAlpha');
-        setOrUpdateBadge(cell, 0, '');
+        const wrap = cell.querySelector('.commBadgeWrap');
+        if (wrap) wrap.remove();
         return;
       }
 
@@ -854,8 +813,20 @@
       cell.style.setProperty('--commAlpha', String(alpha));
 
       const set = communityNames.get(k);
-      const namesMultiline = set && set.size ? [...set].sort((a,b)=>a.localeCompare(b)).join('\n') : '';
-      setOrUpdateBadge(cell, count, namesMultiline);
+      const namesMultiline = set && set.size ? [...set].sort((a,b)=>a.localeCompare(b)).join('\n') : '—';
+
+      let wrap = cell.querySelector('.commBadgeWrap');
+      if (!wrap){
+        wrap = document.createElement('div');
+        wrap.className = 'commBadgeWrap';
+        wrap.innerHTML = `
+          <div class="commBadge"></div>
+          <div class="commTip"><div class="tTitle">Wer hatte das hier?</div><div class="tList"></div></div>
+        `;
+        cell.appendChild(wrap);
+      }
+      wrap.querySelector('.commBadge').textContent = String(count);
+      wrap.querySelector('.tList').textContent = namesMultiline;
     }
 
     function refreshAllCommunityOverlays(){
@@ -894,6 +865,7 @@
       otherTip.style.left = left+'px';
       otherTip.style.top  = top+'px';
     }
+
     function getPrettyNameFromKey(pokeKey){ return dexByKey.get(pokeKey) || pokeKey; }
 
     function buildOtherAnswersHtmlForCell(cell){
@@ -903,17 +875,12 @@
       const cellKey = `${r},${c}`;
       const byMon = communityCellIndex.get(cellKey);
       if (!byMon) return '';
-
       const currentKey = cell.dataset.pokeKey || '';
       const rows = [];
       for (const [k, rec] of byMon.entries()){
         if (!k || k === currentKey) continue;
         const names = rec.names ? [...rec.names].sort((a,b)=>a.localeCompare(b)) : [];
-        rows.push({
-          name: getPrettyNameFromKey(k),
-          count: rec.count || 0,
-          who: names.length ? names.join('\n') : '—'
-        });
+        rows.push({ name: getPrettyNameFromKey(k), count: rec.count||0, who: names.length?names.join('\n'):'—' });
       }
       if (!rows.length) return '';
       rows.sort((a,b)=> (b.count-a.count) || a.name.localeCompare(b.name));
@@ -1055,28 +1022,6 @@
     });
     document.addEventListener('click', (e) => { if (!e.target.closest('.field')) hideDD(); });
 
-    // ===== background picker (optional local) =====
-    let bgObjectUrl = null;
-    async function pickBackground(){
-      try{
-        const [fh] = await window.showOpenFilePicker({
-          types: [{ description:'Bilder', accept: { 'image/*': ['.png','.jpg','.jpeg','.webp','.gif'] } }],
-          multiple:false
-        });
-        const file = await fh.getFile();
-        if (bgObjectUrl) URL.revokeObjectURL(bgObjectUrl);
-        bgObjectUrl = URL.createObjectURL(file);
-        bgLayer.style.backgroundImage = `url("${bgObjectUrl}")`;
-        bgLayer.style.opacity = '0.55';
-      }catch{}
-    }
-    function clearBackground(){
-      if (bgObjectUrl) URL.revokeObjectURL(bgObjectUrl);
-      bgObjectUrl = null;
-      bgLayer.style.backgroundImage = '';
-      bgLayer.style.opacity = '0';
-    }
-
     // ===== export/import community =====
     function downloadJson(obj, filename){
       const blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
@@ -1130,11 +1075,9 @@
         communityCounts.set(mapKey, next);
         communityMaxCount = Math.max(communityMaxCount, next);
 
-        if (who){
-          const set = communityNames.get(mapKey) || new Set();
-          set.add(who);
-          communityNames.set(mapKey, set);
-        }
+        const set = communityNames.get(mapKey) || new Set();
+        if (who) set.add(who);
+        communityNames.set(mapKey, set);
 
         const cellKey = `${r},${c}`;
         let byMon = communityCellIndex.get(cellKey);
@@ -1195,9 +1138,6 @@
       if (confirm('Community-Daten wirklich löschen?')) clearCommunity();
     });
 
-    document.getElementById('bgPickBtn').addEventListener('click', pickBackground);
-    document.getElementById('bgClearBtn').addEventListener('click', clearBackground);
-
     const presenterBtn = document.getElementById('presenterBtn');
     function togglePresenter(){
       presenter = !presenter;
@@ -1217,17 +1157,19 @@
     });
     updateOtherHoverBtn();
 
-    document.addEventListener('keydown', (e) => {
-      if (e.target.matches('input,[contenteditable="true"]')) return;
-      if (e.key.toLowerCase() === 'r') randomEmptyCell();
-      if (e.key.toLowerCase() === 'd') setDeleteMode(!deleteMode);
-      if (e.key.toLowerCase() === 'h') togglePresenter();
-    });
+    // init UI
+    selectCell(cells[0]);
+    randomEmptyCell();
+    setCommStatus();
+    recalcCommunityScore();
+
+    window.addEventListener('resize', () => headerSpans.forEach(sp => fitHeaderText(sp)));
 
     // ===== Hosted init =====
     async function initHosted(){
       try{
         setStatus('Status: lädt Daten…');
+
         const mapRes = await fetch(MAPPING_URL, { cache: "no-store" });
         const mapObj = await mapRes.json();
         dex = Array.isArray(mapObj.entries) ? mapObj.entries : [];
@@ -1248,28 +1190,18 @@
           }
         }catch{}
 
-        // force load shiny audio URL
         shinyAudio = new Audio(SHINY_SOUND_URL);
         applyShinyVolume();
 
         setStatus(`Eingerichtet ✅ (${dex.length} Einträge)`);
         headerSpans.forEach(sp => fitHeaderText(sp));
-
         toast('Bereit.');
       }catch(err){
         console.error(err);
         setStatus('Fehler: Daten konnten nicht geladen werden');
-        toast('Bitte prüfe, ob dex_de.json & grid_preset.json im Pages-Repo liegen und der Username stimmt.');
+        toast('Bitte prüfe: dex_de.json & grid_preset.json im Pages-Repo.');
       }
     }
-
-    // init UI
-    selectCell(cells[0]);
-    randomEmptyCell();
-    setCommStatus();
-    recalcCommunityScore();
-
-    window.addEventListener('resize', () => headerSpans.forEach(sp => fitHeaderText(sp)));
 
     initHosted();
   </script>
