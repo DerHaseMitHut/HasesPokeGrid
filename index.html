@@ -318,78 +318,66 @@
     }
 
     /* ===== INLAY: Community-Antworten (andere) direkt im Feld ===== */
-.cell .inlayOverlay{
-  position:absolute;
-  inset: 8px;
-  border-radius: 14px;
-  background: rgba(12,14,22,.92);
-  border: 1px solid rgba(255,255,255,.18);
-  box-shadow: 0 18px 40px rgba(0,0,0,.55);
-  backdrop-filter: blur(10px);
-  color: rgba(255,255,255,.94);
-  z-index: 60;
-  display: none;
+    .cell .inlayOverlay{
+      position:absolute;
+      inset: 8px;
+      border-radius: 14px;
+      background: rgba(12,14,22,.92);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 18px 40px rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      color: rgba(255,255,255,.94);
+      z-index: 60;
+      display: none;
+      padding: 9px 10px;
+      overflow: hidden;
+      pointer-events: auto;
+    }
+    .cell .inlayOverlay.show{ display:block; }
+    .cell .inlayTitle{ display:none; }
 
-  /* Weniger “Chrome”, mehr Content */
-  padding: 9px 10px;
-  overflow: hidden;
-  pointer-events: auto;
-}
+    .cell .inlayList{
+      font-size: 11px;
+      line-height: 1.18;
+      max-height: 100%;
+      overflow: auto;
+      padding-right: 4px;
+      white-space: normal;
+    }
 
-.cell .inlayOverlay.show{ display:block; }
+    .cell .inlayRow{
+      margin: 6px 0;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255,255,255,.10);
+    }
+    .cell .inlayRow:first-child{
+      margin-top:0; padding-top:0; border-top:0;
+    }
 
-/* Titel komplett weg – falls noch im DOM, einfach nicht anzeigen */
-.cell .inlayTitle{ display:none; }
+    .cell .inlayMon{
+      font-weight: 900;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .cell .inlayCount{
+      opacity:.75;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .cell .inlayMeta{
+      color: rgba(255,255,255,.78);
+      font-size: 10px;
+      margin-top: 2px;
+      white-space: pre-line;
+    }
 
-.cell .inlayList{
-  /* kleiner, mehr Zeilen sichtbar */
-  font-size: 11px;
-  line-height: 1.18;
-
-  /* volle Höhe nutzen */
-  max-height: 100%;
-  overflow: auto;
-  padding-right: 4px;
-  white-space: normal;
-}
-
-/* dichter, aber noch gut lesbar */
-.cell .inlayRow{
-  margin: 6px 0;
-  padding-top: 6px;
-  border-top: 1px solid rgba(255,255,255,.10);
-}
-.cell .inlayRow:first-child{
-  margin-top:0; padding-top:0; border-top:0;
-}
-
-.cell .inlayMon{
-  font-weight: 900;
-  display:flex;
-  justify-content:space-between;
-  gap:10px;
-}
-
-.cell .inlayCount{
-  opacity:.75;
-  font-weight:900;
-  white-space:nowrap;
-}
-
-.cell .inlayMeta{
-  color: rgba(255,255,255,.78);
-  font-size: 10px;
-  margin-top: 2px;
-  white-space: pre-line;
-}
-
-.cell .inlayList::-webkit-scrollbar{ width:10px; }
-.cell .inlayList::-webkit-scrollbar-thumb{
-  background: rgba(255,255,255,.12);
-  border-radius: 999px;
-  border: 2px solid rgba(12,14,22,.65);
-}
-
+    .cell .inlayList::-webkit-scrollbar{ width:10px; }
+    .cell .inlayList::-webkit-scrollbar-thumb{
+      background: rgba(255,255,255,.12);
+      border-radius: 999px;
+      border: 2px solid rgba(12,14,22,.65);
+    }
 
     .panel{
       border:1px solid var(--line);
@@ -487,11 +475,128 @@
 
     .presenter .panel{ display:none; }
     .presenter .wrap{ grid-template-columns: auto; }
+
+    /* ===== Tutorial Overlay ===== */
+    #tour{
+      position:fixed;
+      inset:0;
+      z-index:9999;
+      display:none;
+      pointer-events:auto;
+    }
+    #tour.show{ display:block; }
+
+    .tourDim{
+      position:absolute;
+      inset:0;
+      background: rgba(0,0,0,.58);
+      backdrop-filter: blur(2px);
+    }
+
+    .tourCard{
+      position:absolute;
+      left: 28px;
+      bottom: 28px;
+      width: min(560px, calc(100vw - 56px));
+      border-radius: 18px;
+      background: rgba(12,14,22,.92);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 18px 60px rgba(0,0,0,.65);
+      padding: 16px 16px 14px 16px;
+      color: rgba(255,255,255,.96);
+    }
+
+    .tourText{
+      font-size: 14px;
+      line-height: 1.35;
+      color: rgba(255,255,255,.92);
+      white-space: pre-line;
+    }
+
+    .tourFooter{
+      margin-top: 12px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+    }
+
+    .tourBtn{
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(56,214,255,.14);
+      color: rgba(255,255,255,.96);
+      padding: 9px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight:900;
+      letter-spacing:.2px;
+      font-size: 13px;
+    }
+    .tourBtn:hover{ background: rgba(56,214,255,.18); }
+
+    .tourBtn.ghost{
+      background: rgba(255,255,255,.06);
+    }
+    .tourBtn.ghost:hover{
+      background: rgba(255,255,255,.09);
+    }
+    .tourBtn.warn{
+      background: rgba(255,210,74,.14);
+      border-color: rgba(255,210,74,.22);
+    }
+    .tourBtn.warn:hover{
+      background: rgba(255,210,74,.18);
+    }
+
+    .tourStep{
+      position:absolute;
+      right: 26px;
+      bottom: 26px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.38);
+      border: 1px solid rgba(255,255,255,.14);
+      color: rgba(255,255,255,.85);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .4px;
+      user-select:none;
+    }
+
+    .tourGlow{
+      position:relative;
+      z-index: 9998 !important;
+      outline: 3px solid rgba(255,210,74,.70);
+      outline-offset: 3px;
+      border-radius: 16px;
+      box-shadow:
+        0 0 0 2px rgba(255,210,74,.22) inset,
+        0 26px 70px rgba(255,210,74,.22),
+        0 0 0 9999px rgba(0,0,0,.0); /* nur zur “Stabilität” */
+    }
+
+    /* Wenn wir auf Zellen highlighten, soll es hübsch passen */
+    .cell.tourGlow{ border-radius: 20px; }
   </style>
 </head>
 
 <body>
   <div id="bgLayer"></div>
+
+  <!-- Tutorial Overlay -->
+  <div id="tour" aria-hidden="true">
+    <div class="tourDim"></div>
+    <div class="tourCard">
+      <div class="tourText" id="tourText"></div>
+      <div class="tourFooter">
+        <button class="tourBtn ghost" id="tourBack">Zurück</button>
+        <button class="tourBtn ghost" id="tourSkip">Überspringen</button>
+        <button class="tourBtn warn" id="tourNext">Weiter</button>
+      </div>
+    </div>
+    <div class="tourStep" id="tourStep"></div>
+  </div>
 
   <div class="wrap">
     <div class="stage" id="stage">
@@ -501,25 +606,25 @@
           <div class="cornerValue" id="cornerScore">0</div>
         </div>
 
-        <div class="hdr"><span class="hdrText">SPALTE 1</span></div>
-        <div class="hdr"><span class="hdrText">SPALTE 2</span></div>
-        <div class="hdr"><span class="hdrText">SPALTE 3</span></div>
-        <div class="hdr"><span class="hdrText">SPALTE 4</span></div>
-        <div class="hdr"><span class="hdrText">SPALTE 5</span></div>
+        <div class="hdr"><span class="hdrText" id="colHdr0">SPALTE 1</span></div>
+        <div class="hdr"><span class="hdrText" id="colHdr1">SPALTE 2</span></div>
+        <div class="hdr"><span class="hdrText" id="colHdr2">SPALTE 3</span></div>
+        <div class="hdr"><span class="hdrText" id="colHdr3">SPALTE 4</span></div>
+        <div class="hdr"><span class="hdrText" id="colHdr4">SPALTE 5</span></div>
 
-        <div class="rowhdr"><span class="rowhdrText">ZEILE 1</span></div>
+        <div class="rowhdr"><span class="rowhdrText" id="rowHdr0">ZEILE 1</span></div>
         <div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div>
 
-        <div class="rowhdr"><span class="rowhdrText">ZEILE 2</span></div>
+        <div class="rowhdr"><span class="rowhdrText" id="rowHdr1">ZEILE 2</span></div>
         <div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div>
 
-        <div class="rowhdr"><span class="rowhdrText">ZEILE 3</span></div>
+        <div class="rowhdr"><span class="rowhdrText" id="rowHdr2">ZEILE 3</span></div>
         <div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div>
 
-        <div class="rowhdr"><span class="rowhdrText">ZEILE 4</span></div>
+        <div class="rowhdr"><span class="rowhdrText" id="rowHdr3">ZEILE 4</span></div>
         <div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div>
 
-        <div class="rowhdr"><span class="rowhdrText">ZEILE 5</span></div>
+        <div class="rowhdr"><span class="rowhdrText" id="rowHdr4">ZEILE 5</span></div>
         <div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div><div class="cell"><div class="hint">leer</div></div>
       </div>
     </div>
@@ -550,6 +655,8 @@
 
         <button class="btn" id="presenterBtn">Presenter Mode (H)</button>
 
+        <button class="btn secondary" id="tutorialBtn">Tutorial starten</button>
+
         <div class="muted">Cry-Lautstärke</div>
         <input id="cryVol" type="range" min="0" max="100" value="25" />
 
@@ -577,12 +684,18 @@
     const SHINY_SPARKLE_URL = `${ASSET_BASE}/ShinySparkle.gif`;
     const SHINY_SOUND_URL   = `${ASSET_BASE}/ShinySound.mp3`;
 
+    // Google Form URL (von dir)
+    const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfgrOxqxCUwZd4MOKgoHKLTXj6AI6Lcu4P_DnsLWy-8VSEXpA/viewform?usp=header";
+
     // ========= CONFIG =========
     const SHINY_CHANCE = 0.05;
     const SPARKLE_DURATION_MS = 1000;
 
     const LS_CRY_VOL = 'pokegrid_cry_vol';
     const LS_SHINY_VOL = 'pokegrid_shiny_vol';
+
+    // Tutorial localStorage key
+    const LS_TOUR_DONE = 'pokegrid_tutorial_done';
 
     // ========= State =========
     let dex = [];
@@ -616,6 +729,17 @@
 
     const cryVolEl = document.getElementById('cryVol');
     const shinyVolEl = document.getElementById('shinyVol');
+
+    // ===== Tutorial elements =====
+    const tourEl = document.getElementById('tour');
+    const tourTextEl = document.getElementById('tourText');
+    const tourStepEl = document.getElementById('tourStep');
+    const tourBackBtn = document.getElementById('tourBack');
+    const tourSkipBtn = document.getElementById('tourSkip');
+    const tourNextBtn = document.getElementById('tourNext');
+    const tutorialBtn = document.getElementById('tutorialBtn');
+    let tourIndex = 0;
+    let tourActive = false;
 
     // ========= helpers =========
     function toast(msg){
@@ -767,12 +891,9 @@
 
       ov = document.createElement('div');
       ov.className = 'inlayOverlay';
-      ov.innerHTML = `
-        <div class="inlayList"></div>
-      `;
+      ov.innerHTML = `<div class="inlayList"></div>`;
       cell.appendChild(ov);
 
-      // Wenn man mit der Maus ins Overlay geht, soll es bleiben (für Scroll)
       ov.addEventListener('mouseenter', () => ov.classList.add('show'));
       ov.addEventListener('mouseleave', () => ov.classList.remove('show'));
 
@@ -999,7 +1120,7 @@
       if (!selectedCell) randomEmptyCell();
       if (!selectedCell) return;
 
-      hideInlay(selectedCell); // Overlay weg wenn wir setzen
+      hideInlay(selectedCell);
 
       const wantShiny = Math.random() < SHINY_CHANCE;
       const url = await loadImageUrlById(entry.id, wantShiny);
@@ -1120,7 +1241,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    function exportMySolution(){
+    function buildMySolutionPayload(){
       const cellsOut = [];
       cells.forEach((cell) => {
         const pid = cell.dataset.pid || '';
@@ -1134,7 +1255,7 @@
       const presetCols = Array.from(document.querySelectorAll('.hdr .hdrText')).map(s => s.textContent);
       const presetRows = Array.from(document.querySelectorAll('.rowhdr .rowhdrText')).map(s => s.textContent);
 
-      const payload = {
+      return {
         version: 1,
         createdAt: new Date().toISOString(),
         gridSize: 5,
@@ -1142,9 +1263,28 @@
         rows: presetRows,
         cells: cellsOut
       };
+    }
 
-      const stamp = new Date().toISOString().replace(/[:.]/g,'-');
-      downloadJson(payload, `pokegrid_solution_${stamp}.json`);
+    function exportAndOpenForm(){
+      const nameRaw = prompt(
+        'Bitte benenne die Datei nach dir (z.B. DerHaseMitHut.json):',
+        'DeinName.json'
+      );
+      if (nameRaw === null) return;
+
+      let fn = String(nameRaw).trim();
+      if (!fn) { toast('Export abgebrochen.'); return; }
+      if (!fn.toLowerCase().endsWith('.json')) fn += '.json';
+
+      const payload = buildMySolutionPayload();
+      downloadJson(payload, fn);
+
+      // Formular öffnen
+      setTimeout(() => {
+        window.open(GOOGLE_FORM_URL, '_blank', 'noopener');
+      }, 250);
+
+      toast('Exportiert. Formular wird geöffnet…');
     }
 
     function addCommunityDataset(dataset, who){
@@ -1202,6 +1342,131 @@
       refreshAllCommunityOverlays();
     }
 
+    // ===== Tutorial logic =====
+    function clearTourGlows(){
+      document.querySelectorAll('.tourGlow').forEach(el => el.classList.remove('tourGlow'));
+    }
+
+    function getExampleCellAndHeaders(){
+      // Wir nehmen (0,0) als Beispielzelle + entsprechende Header
+      const cell = cells[0];
+      const col = document.getElementById('colHdr0');
+      const row = document.getElementById('rowHdr0');
+      return { cell, col, row };
+    }
+
+    const TOUR_STEPS = [
+      {
+        text:
+`Herzlich willkommen zu Hases PokéGrid. Danke, dass Du mitmachst.
+
+Deine Aufgabe ist es, alle 25 Felder der Tabelle mit Pokémon zu füllen.
+Dabei gibt es KEIN richtig oder falsch.
+
+Nehme einfach das Pokémon, das DU für am passendsten hältst.`
+      },
+      {
+        text:
+`Um die Tabelle zu füllen, klicke hier auf „Zufälliges leeres Feld“.`,
+        highlight: () => [document.getElementById('randomBtn')]
+      },
+      {
+        text:
+`Nutze dann die Eingabemaske, um ein Pokémon auszuwählen, und bestätige es mit Enter.
+
+Dann kannst Du erneut ein zufälliges leeres Feld auswählen lassen, bis alle Felder gefüllt sind.`,
+        highlight: () => {
+          const { cell, col, row } = getExampleCellAndHeaders();
+          return [document.getElementById('pokeInput'), cell, col, row];
+        }
+      },
+      {
+        text:
+`Wenn Du eine Auswahl ändern möchtest, klicke die Zelle an und füge einfach ein neues Pokémon ein.`
+      },
+      {
+        text:
+`Ist die Tabelle gefüllt, lade mir Deine Antwort hoch:
+
+Klicke auf „Export“, benenne die .json Datei nach Dir (z.B. „DerHaseMitHut.json“).
+Dieser Name würde dann im Video sichtbar sein.
+
+Im automatisch geöffneten Google Formular lädst Du dann diese .json Datei hoch. Fertig!`,
+        highlight: () => [document.getElementById('exportBtn')]
+      },
+      {
+        text:
+`Nun viel Spaß!
+
+Wenn noch Fragen sind, meld Dich gerne bei mir auf Discord!
+(Meinen Server findest Du unter jedem meiner Videos verlinkt!)
+
+Hase!`
+      }
+    ];
+
+    function renderTour(){
+      const total = TOUR_STEPS.length;
+      const step = TOUR_STEPS[tourIndex];
+
+      tourTextEl.textContent = step.text;
+      tourStepEl.textContent = `Tutorial ${tourIndex+1}/${total}`;
+
+      tourBackBtn.disabled = tourIndex === 0;
+      tourBackBtn.style.opacity = tourIndex === 0 ? .55 : 1;
+
+      tourNextBtn.textContent = (tourIndex === total-1) ? 'Fertig' : 'Weiter';
+
+      clearTourGlows();
+      if (typeof step.highlight === 'function'){
+        const els = step.highlight() || [];
+        els.forEach(el => el && el.classList.add('tourGlow'));
+      }
+    }
+
+    function startTour(force=false){
+      if (!force && localStorage.getItem(LS_TOUR_DONE) === '1') return;
+      tourActive = true;
+      tourIndex = 0;
+      tourEl.classList.add('show');
+      tourEl.setAttribute('aria-hidden', 'false');
+      renderTour();
+    }
+
+    function endTour(markDone=true){
+      tourActive = false;
+      clearTourGlows();
+      tourEl.classList.remove('show');
+      tourEl.setAttribute('aria-hidden', 'true');
+      if (markDone) localStorage.setItem(LS_TOUR_DONE, '1');
+    }
+
+    tourBackBtn.addEventListener('click', () => {
+      if (!tourActive) return;
+      tourIndex = Math.max(0, tourIndex - 1);
+      renderTour();
+    });
+
+    tourNextBtn.addEventListener('click', () => {
+      if (!tourActive) return;
+      if (tourIndex >= TOUR_STEPS.length - 1) { endTour(true); return; }
+      tourIndex++;
+      renderTour();
+    });
+
+    tourSkipBtn.addEventListener('click', () => endTour(true));
+
+    tutorialBtn.addEventListener('click', () => startTour(true));
+
+    // ESC schließt Tutorial
+    document.addEventListener('keydown', (e) => {
+      if (!tourActive) return;
+      if (e.key === 'Escape') endTour(true);
+    });
+
+    // Klick auf Dimmer -> nichts (damit man nicht aus Versehen schließt)
+    // (bewusst kein handler)
+
     // ===== controls =====
     document.getElementById('randomBtn').addEventListener('click', () => {
       hideAllInlays();
@@ -1220,7 +1485,7 @@
       if (confirm('Wirklich alle Zellen leeren? (Titel bleiben)')) resetGrid();
     });
 
-    document.getElementById('exportBtn').addEventListener('click', exportMySolution);
+    document.getElementById('exportBtn').addEventListener('click', exportAndOpenForm);
     document.getElementById('importCommBtn').addEventListener('click', importCommunityAdditive);
     document.getElementById('clearCommBtn').addEventListener('click', () => {
       if (confirm('Community-Daten wirklich löschen?')) clearCommunity();
@@ -1249,6 +1514,7 @@
     updateOtherHoverBtn();
 
     document.addEventListener('keydown', (e) => {
+      if (tourActive) return;
       if (e.target.matches('input,[contenteditable="true"]')) return;
       if (e.key.toLowerCase() === 'r') { hideAllInlays(); randomEmptyCell(); }
       if (e.key.toLowerCase() === 'd') setDeleteMode(!deleteMode);
@@ -1286,6 +1552,10 @@
         setStatus(`Eingerichtet ✅ (${dex.length} Einträge)`);
         headerSpans.forEach(sp => fitHeaderText(sp));
         toast('Bereit.');
+
+        // Tutorial automatisch (nur einmal)
+        startTour(false);
+
       }catch(err){
         console.error(err);
         setStatus('Fehler: Daten konnten nicht geladen werden');
@@ -1307,4 +1577,3 @@
   </script>
 </body>
 </html>
-
