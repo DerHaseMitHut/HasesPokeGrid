@@ -582,6 +582,36 @@
     /* ===== Mobile Community Bar ===== */
     .mobileBar{ display:none; }
 
+    /* ===== Mobile dropdown (fixed, over bottom bar) ===== */
+    .mdd{
+      position: fixed;
+      left: 10px;
+      right: 10px;
+      bottom: calc(10px + env(safe-area-inset-bottom) + 118px);
+      background: rgba(16,18,30,.98);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:14px;
+      overflow:hidden;
+      max-height: 40vh;
+      display:none;
+      backdrop-filter: blur(10px);
+      z-index: 10050;
+      box-shadow: 0 22px 60px rgba(0,0,0,.65);
+    }
+    .mdd.show{ display:block; }
+    .mdd button{
+      width:100%;
+      text-align:left;
+      padding:12px 12px;
+      min-height:44px;
+      border:0;
+      background: transparent;
+      color: #fff;
+      cursor:pointer;
+      font-size:15px;
+    }
+    .mdd button:hover, .mdd button.active{ background: rgba(56,214,255,.16); }
+
     /* ===== MOBILE LAYOUT (SCROLL + STICKY LEFT) ===== */
     @media (max-width: 900px){
       body{ overflow:auto; }
@@ -593,35 +623,36 @@
         min-height:100vh;
       }
 
-      .panel{ display:none; } /* Community mobile: creator panel ausblenden */
+      .panel{ display:none; }
 
       .stage{
         width: 100%;
-        height: calc(100vh - 140px); /* Platz für Bottom Bar */
+        height: calc(100vh - 156px);
         padding: 12px;
         overflow: auto;
         -webkit-overflow-scrolling: touch;
-        padding-bottom: 140px; /* Safe space für Bottom Bar */
+        padding-bottom: 156px;
       }
 
-      /* Dimensions für mobile */
+      /* Mobile sizing (WICHTIG: Zellbreite deutlich kleiner) */
       :root{
         --labelW: 150px;
         --headerH: 84px;
         --gap: 10px;
+        --cellW: 150px;
       }
 
-      /* Grid darf breiter sein => horizontal wischbar */
       .gridframe{
         width: max-content;
-        min-width: calc(var(--labelW) + (5 * 150px) + (5 * var(--gap)) + var(--gap));
+        grid-template-columns: var(--labelW) repeat(5, var(--cellW));
+        grid-template-rows: var(--headerH) repeat(5, minmax(0, 1fr));
+        min-width: calc(var(--labelW) + (5 * var(--cellW)) + (6 * var(--gap)));
       }
 
-      /* Mindestbreiten, damit Spaltenheader nicht gequetscht werden */
-      .cell, .hdr{ min-width: 150px; }
+      .cell{ min-width: var(--cellW); }
+      .hdr{ min-width: var(--cellW); }
       .rowhdr, .cornerInfo{ min-width: var(--labelW); }
 
-      /* Linke Spalte sticky (Corner + Row Labels) */
       .cornerInfo,
       .rowhdr{
         position: sticky;
@@ -631,10 +662,8 @@
         backdrop-filter: blur(10px);
       }
 
-      /* Top header NICHT sticky (soll mit scrollen) */
       .hdr{ position: relative; z-index: 5; }
 
-      /* Mobile Bar */
       .mobileBar{
         display:flex;
         gap:10px;
@@ -650,7 +679,7 @@
         backdrop-filter: blur(10px);
         box-shadow: 0 18px 60px rgba(0,0,0,.55);
         z-index: 9990;
-        flex-wrap: wrap; /* 2-zeilig, falls nötig */
+        flex-wrap: wrap;
       }
 
       #mobilePokeInput{
@@ -679,9 +708,6 @@
         background: rgba(255,210,74,.18);
         border-color: rgba(255,210,74,.22);
       }
-
-      /* Dropdown über allem */
-      .dd{ z-index: 10020; }
 
       .cornerValue{ font-size: 22px; }
     }
@@ -739,7 +765,7 @@
       </div>
     </div>
 
-    <!-- Desktop Controls (Creator/Advanced) -->
+    <!-- Desktop Controls -->
     <div class="panel">
       <h2>Controls</h2>
       <div class="stack">
@@ -779,7 +805,7 @@
     </div>
   </div>
 
-  <!-- Mobile Community Bar (Minimal UI) -->
+  <!-- Mobile Community Bar -->
   <div id="mobileBar" class="mobileBar" aria-label="Mobile Controls">
     <input id="mobilePokeInput" placeholder="Pokémon eingeben…" autocomplete="off" />
     <button id="mRandom" class="mBtn primary" type="button">Random</button>
@@ -787,6 +813,9 @@
     <button id="mExport" class="mBtn" type="button">Export</button>
     <button id="mTour" class="mBtn" type="button">Tutorial</button>
   </div>
+
+  <!-- Mobile Dropdown -->
+  <div class="mdd" id="mdd" aria-label="Vorschläge (Mobile)"></div>
 
   <script>
     // ========= HOSTED CONFIG =========
@@ -854,6 +883,9 @@
     const mDelete = document.getElementById('mDelete');
     const mExport = document.getElementById('mExport');
     const mTour = document.getElementById('mTour');
+
+    const mdd = document.getElementById('mdd');
+    let mddIndex = -1;
 
     // ===== Tutorial elements =====
     const tourEl = document.getElementById('tour');
@@ -1038,7 +1070,7 @@
       if (selectedCell) selectedCell.classList.remove('selected');
       selectedCell = cell;
       cell.classList.add('selected');
-      scrollCellIntoView(cell); // NEW: auto scroll on mobile
+      scrollCellIntoView(cell);
     }
     function isEmpty(cell){ return !cell.dataset.pid; }
 
@@ -1153,7 +1185,7 @@
       cells.forEach(c => c.classList.remove('marked'));
       pick.classList.add('marked');
       selectCell(pick);
-      scrollCellIntoView(pick); // extra safe
+      scrollCellIntoView(pick);
       return pick;
     }
 
@@ -1309,7 +1341,7 @@
       }
     }
 
-    // ===== autocomplete =====
+    // ===== autocomplete (DESKTOP) =====
     let ddIndex = -1;
     function hideDD(){ dd.classList.remove('show'); dd.innerHTML=''; ddIndex=-1; }
     function showDD(items){
@@ -1320,11 +1352,9 @@
         b.textContent = it.display;
         b.addEventListener('click', () => {
           input.value = it.display;
-          if (mIn) mIn.value = it.display;
           hideDD();
           placePokemon(it);
-          if (isMobileView() && mIn){ mIn.focus(); mIn.select(); }
-          else { input.focus(); input.select(); }
+          input.focus(); input.select();
         });
         if (idx === 0) b.classList.add('active');
         dd.appendChild(b);
@@ -1332,6 +1362,7 @@
       dd.classList.add('show');
       ddIndex = 0;
     }
+
     function searchDex(q){
       q = normKey(q);
       if (!q || !dex.length) return [];
@@ -1345,12 +1376,16 @@
       }
       return starts.concat(contains).slice(0, 12);
     }
+
     input.addEventListener('input', () => {
+      if (isMobileView()) return;
       const items = searchDex(input.value);
       if (!items.length){ hideDD(); return; }
       showDD(items);
     });
+
     input.addEventListener('keydown', (e) => {
+      if (isMobileView()) return;
       if (!dd.classList.contains('show')){
         if (e.key === 'Enter'){
           const q = normKey(input.value);
@@ -1372,6 +1407,72 @@
 
     document.addEventListener('click', (e) => { if (!e.target.closest('.field')) hideDD(); });
 
+    // ===== autocomplete (MOBILE) =====
+    function hideMDD(){
+      if (!mdd) return;
+      mdd.classList.remove('show');
+      mdd.innerHTML = '';
+      mddIndex = -1;
+    }
+    function showMDD(items){
+      if (!mdd) return;
+      mdd.innerHTML = '';
+      items.forEach((it, idx) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = it.display;
+        b.addEventListener('click', () => {
+          mIn.value = it.display;
+          hideMDD();
+          placePokemon(it);
+          mIn.focus();
+          mIn.select();
+        });
+        if (idx === 0) b.classList.add('active');
+        mdd.appendChild(b);
+      });
+      mdd.classList.add('show');
+      mddIndex = 0;
+    }
+
+    if (mIn){
+      mIn.addEventListener('input', () => {
+        if (!isMobileView()) return;
+        const items = searchDex(mIn.value);
+        if (!items.length){ hideMDD(); return; }
+        showMDD(items);
+      });
+
+      mIn.addEventListener('keydown', (e) => {
+        if (!isMobileView()) return;
+
+        if (!mdd.classList.contains('show')){
+          if (e.key === 'Enter'){
+            const q = normKey(mIn.value);
+            const exact = dex.find(x => (x.key||'') === q) || null;
+            if (exact) placePokemon(exact);
+          }
+          return;
+        }
+
+        const buttons = Array.from(mdd.querySelectorAll('button'));
+        if (e.key === 'ArrowDown'){ e.preventDefault(); mddIndex = Math.min(mddIndex+1, buttons.length-1); }
+        else if (e.key === 'ArrowUp'){ e.preventDefault(); mddIndex = Math.max(mddIndex-1, 0); }
+        else if (e.key === 'Enter'){ e.preventDefault(); buttons[mddIndex]?.click(); return; }
+        else if (e.key === 'Escape'){ e.preventDefault(); hideMDD(); return; }
+
+        buttons.forEach(b => b.classList.remove('active'));
+        buttons[mddIndex]?.classList.add('active');
+        buttons[mddIndex]?.scrollIntoView({block:'nearest'});
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!isMobileView()) return;
+      if (e.target.closest('#mobileBar') || e.target.closest('#mdd')) return;
+      hideMDD();
+    });
+
     // ===== Mobile Bar wiring =====
     function syncMobileDeleteLabel(){
       if (!mDelete) return;
@@ -1382,18 +1483,6 @@
     mDelete?.addEventListener('click', () => document.getElementById('deleteBtn')?.click());
     mExport?.addEventListener('click', () => document.getElementById('exportBtn')?.click());
     mTour?.addEventListener('click', () => document.getElementById('tutorialBtn')?.click());
-
-    function setMainInputValue(v){
-      input.value = v;
-      input.dispatchEvent(new Event('input', { bubbles:true }));
-    }
-    mIn?.addEventListener('input', () => setMainInputValue(mIn.value));
-    mIn?.addEventListener('keydown', (e) => {
-      const evt = new KeyboardEvent('keydown', { key: e.key, code: e.code, keyCode: e.keyCode, which: e.which, bubbles: true });
-      input.dispatchEvent(evt);
-      if (e.key === 'Enter') mIn.value = input.value;
-      if (e.key === 'Escape') hideDD();
-    });
 
     // ===== background picker =====
     let bgObjectUrl = null;
@@ -1527,7 +1616,7 @@
       refreshAllCommunityOverlays();
     }
 
-    // ===== Tutorial logic (unchanged behavior) =====
+    // ===== Tutorial logic (unchanged) =====
     function clearTourGlows(){
       document.querySelectorAll('.tourGlow').forEach(el => el.classList.remove('tourGlow'));
     }
