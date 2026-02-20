@@ -406,6 +406,7 @@
       cursor:pointer;
       font-weight:800;
       letter-spacing:.3px;
+      min-height:44px; /* tap target */
     }
     .btn:hover{ background: rgba(42,123,255,.14); }
     .btn.danger{
@@ -421,7 +422,7 @@
       background: rgba(56,214,255,.18);
       box-shadow: 0 0 0 2px rgba(255,210,74,.12) inset, 0 14px 30px rgba(255,210,74,.10);
     }
-    .btn.small{ padding:10px 12px; font-weight:800; font-size:14px; }
+    .btn.small{ padding:10px 12px; font-weight:800; font-size:14px; min-height:44px; }
 
     .stack{ display:grid; gap:10px; }
     .field{ position:relative; z-index:2; }
@@ -434,6 +435,7 @@
       border-radius:14px;
       outline:none;
       font-size:15px;
+      min-height:44px; /* tap target */
     }
     input:focus{
       border-color: rgba(56,214,255,.35);
@@ -458,12 +460,13 @@
     .dd button{
       width:100%;
       text-align:left;
-      padding:10px 12px;
+      padding:12px 12px;
+      min-height:44px; /* tap target */
       border:0;
       background: transparent;
       color: var(--text);
       cursor:pointer;
-      font-size:14px;
+      font-size:15px;
     }
     .dd button:hover, .dd button.active{ background: rgba(56,214,255,.16); }
 
@@ -486,7 +489,6 @@
     }
     #tour.show{ display:block; }
 
-    /* Base dimmer (wird genutzt wenn kein Highlight) */
     .tourDim{
       position:absolute;
       inset:0;
@@ -495,7 +497,6 @@
       transition: opacity .12s ease;
     }
 
-    /* Spotlight Layer (macht "Loch" im Dimmer) */
     #tourSpot{
       position:absolute;
       inset:0;
@@ -522,7 +523,6 @@
       transform-origin: center;
     }
 
-    /* Schrift größer (besser lesbar) */
     .tourText{
       font-size: 17px;
       line-height: 1.45;
@@ -550,6 +550,7 @@
       font-weight:900;
       letter-spacing:.2px;
       font-size: 14px;
+      min-height:44px; /* tap target */
     }
     .tourBtn:hover{ background: rgba(56,214,255,.18); }
 
@@ -595,6 +596,84 @@
     }
 
     .cell.tourGlow{ border-radius: 20px; }
+
+    /* ===== Mobile Community Bar ===== */
+    .mobileBar{ display:none; }
+
+    @media (max-width: 900px){
+      body{ overflow:auto; }
+      .wrap{
+        grid-template-columns: 1fr;
+        padding: 12px;
+        height:auto;
+        min-height:100vh;
+      }
+      .panel{ display:none; } /* Community: creator panel ausblenden */
+      .stage{
+        width: 100%;
+        height: calc(100vh - 120px); /* Platz für Bottom Bar */
+        padding: 12px;
+      }
+      .gridframe{
+        gap: 10px;
+      }
+      :root{
+        --labelW: 128px;
+        --headerH: 84px;
+      }
+
+      .mobileBar{
+        display:flex;
+        gap:10px;
+        align-items:center;
+        position: fixed;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        padding: 10px;
+        border-radius: 18px;
+        background: rgba(12,14,22,.92);
+        border: 1px solid rgba(255,255,255,.18);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 18px 60px rgba(0,0,0,.55);
+        z-index: 9990;
+      }
+
+      #mobilePokeInput{
+        flex: 1 1 auto;
+        min-width: 120px;
+      }
+
+      .mBtn{
+        flex: 0 0 auto;
+        padding: 10px 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,.16);
+        background: rgba(56,214,255,.14);
+        color: rgba(255,255,255,.98);
+        font-weight: 900;
+        min-height:44px; /* tap target */
+      }
+      .mBtn:active{ transform: translateY(1px); }
+
+      .mBtn.danger{
+        background: rgba(255,110,110,.18);
+        border-color: rgba(255,110,110,.25);
+      }
+
+      .mBtn.primary{
+        background: rgba(255,210,74,.18);
+        border-color: rgba(255,210,74,.22);
+      }
+
+      /* Mobile: Autocomplete Dropdown soll über Bar liegen */
+      .dd{
+        z-index: 10020;
+      }
+
+      /* Mobile: Corner score etwas kompakter */
+      .cornerValue{ font-size: 22px; }
+    }
   </style>
 </head>
 
@@ -649,6 +728,7 @@
       </div>
     </div>
 
+    <!-- Desktop Controls (Creator/Advanced) -->
     <div class="panel">
       <h2>Controls</h2>
       <div class="stack">
@@ -688,6 +768,15 @@
     </div>
   </div>
 
+  <!-- Mobile Community Bar (Minimal UI) -->
+  <div id="mobileBar" class="mobileBar" aria-label="Mobile Controls">
+    <input id="mobilePokeInput" placeholder="Pokémon eingeben…" autocomplete="off" />
+    <button id="mRandom" class="mBtn primary" type="button">Random</button>
+    <button id="mDelete" class="mBtn danger" type="button">Löschen</button>
+    <button id="mExport" class="mBtn" type="button">Export</button>
+    <button id="mTour" class="mBtn" type="button">Tutorial</button>
+  </div>
+
   <script>
     // ========= HOSTED CONFIG =========
     const GITHUB_USER = "DerHaseMitHut";
@@ -704,7 +793,6 @@
     const SHINY_SPARKLE_URL = `${ASSET_BASE}/ShinySparkle.gif`;
     const SHINY_SOUND_URL   = `${ASSET_BASE}/ShinySound.mp3`;
 
-    // Google Form URL
     const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfgrOxqxCUwZd4MOKgoHKLTXj6AI6Lcu4P_DnsLWy-8VSEXpA/viewform?usp=header";
 
     // ========= CONFIG =========
@@ -724,11 +812,11 @@
     let presenter = false;
 
     let communityDatasetCount = 0;
-    const communityCounts = new Map();      // "r,c,pokeKey" -> count
-    const communityNames = new Map();       // "r,c,pokeKey" -> Set(names)
+    const communityCounts = new Map();
+    const communityNames = new Map();
     let communityMaxCount = 0;
 
-    const communityCellIndex = new Map();   // "r,c" -> Map(pokeKey -> {count,names:Set})
+    const communityCellIndex = new Map();
     let otherHoverMode = false;
 
     let shinyAudio = new Audio();
@@ -748,6 +836,14 @@
     const cryVolEl = document.getElementById('cryVol');
     const shinyVolEl = document.getElementById('shinyVol');
 
+    // ===== Mobile elements =====
+    const mobileBar = document.getElementById('mobileBar');
+    const mIn = document.getElementById('mobilePokeInput');
+    const mRandom = document.getElementById('mRandom');
+    const mDelete = document.getElementById('mDelete');
+    const mExport = document.getElementById('mExport');
+    const mTour = document.getElementById('mTour');
+
     // ===== Tutorial elements =====
     const tourEl = document.getElementById('tour');
     const tourTextEl = document.getElementById('tourText');
@@ -766,35 +862,42 @@
 
     // ========= helpers =========
     function toast(msg){
+      if (!toastEl) return;
       toastEl.textContent = msg || '';
       if (msg) setTimeout(() => { if (toastEl.textContent === msg) toastEl.textContent=''; }, 2400);
     }
-    function setStatus(text){ autoStatus.textContent = text; }
-    function setCommStatus(){ commStatus.textContent = `Community-Datensätze: ${communityDatasetCount}`; }
+    function setStatus(text){ if (autoStatus) autoStatus.textContent = text; }
+    function setCommStatus(){ if (commStatus) commStatus.textContent = `Community-Datensätze: ${communityDatasetCount}`; }
 
     function clamp01(v){ return Math.max(0, Math.min(1, v)); }
     function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 
+    function isMobileView(){
+      return window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
+    }
+
     function loadVolumePrefs(){
       const c = localStorage.getItem(LS_CRY_VOL);
       const s = localStorage.getItem(LS_SHINY_VOL);
-      if (c != null) cryVolEl.value = String(Math.max(0, Math.min(100, Number(c))));
-      if (s != null) shinyVolEl.value = String(Math.max(0, Math.min(100, Number(s))));
+      if (cryVolEl && c != null) cryVolEl.value = String(Math.max(0, Math.min(100, Number(c))));
+      if (shinyVolEl && s != null) shinyVolEl.value = String(Math.max(0, Math.min(100, Number(s))));
     }
     function applyCryVolume(){
-      cryAudio.volume = clamp01(Number(cryVolEl.value ?? 25) / 100);
-      localStorage.setItem(LS_CRY_VOL, String(cryVolEl.value));
+      const v = cryVolEl ? Number(cryVolEl.value ?? 25) : 25;
+      cryAudio.volume = clamp01(v / 100);
+      localStorage.setItem(LS_CRY_VOL, String(v));
     }
     function applyShinyVolume(){
-      shinyAudio.volume = clamp01(Number(shinyVolEl.value ?? 55) / 100);
-      localStorage.setItem(LS_SHINY_VOL, String(shinyVolEl.value));
+      const v = shinyVolEl ? Number(shinyVolEl.value ?? 55) : 55;
+      shinyAudio.volume = clamp01(v / 100);
+      localStorage.setItem(LS_SHINY_VOL, String(v));
     }
 
     loadVolumePrefs();
     applyCryVolume();
     applyShinyVolume();
-    cryVolEl.addEventListener('input', applyCryVolume);
-    shinyVolEl.addEventListener('input', applyShinyVolume);
+    if (cryVolEl) cryVolEl.addEventListener('input', applyCryVolume);
+    if (shinyVolEl) shinyVolEl.addEventListener('input', applyShinyVolume);
 
     function idxToRC(idx){
       const i = Number(idx);
@@ -989,7 +1092,9 @@
         selectCell(c);
       });
 
+      // Hover inlay nur Desktop (Touch hat kein Hover)
       c.addEventListener('mouseenter', () => {
+        if (isMobileView()) return;
         if (!otherHoverMode) return;
         if (!c.dataset.pid) return;
         if (communityDatasetCount <= 0) return;
@@ -1000,6 +1105,7 @@
       });
 
       c.addEventListener('mouseleave', () => {
+        if (isMobileView()) return;
         hideInlay(c);
       });
     });
@@ -1025,7 +1131,9 @@
         updateCommunityOverlayForCell(c);
       });
       deleteMode = false;
-      document.getElementById('deleteBtn').textContent = 'Löschen';
+      const del = document.getElementById('deleteBtn');
+      if (del) del.textContent = 'Löschen';
+      syncMobileDeleteLabel();
       selectCell(cells[0]);
       randomEmptyCell();
       recalcCommunityScore();
@@ -1169,7 +1277,7 @@
       }
     }
 
-    // ===== autocomplete =====
+    // ===== autocomplete (Desktop + Mobile Input sync) =====
     let ddIndex = -1;
     function hideDD(){ dd.classList.remove('show'); dd.innerHTML=''; ddIndex=-1; }
     function showDD(items){
@@ -1180,10 +1288,12 @@
         b.textContent = it.display;
         b.addEventListener('click', () => {
           input.value = it.display;
+          if (mIn) mIn.value = it.display;
           hideDD();
           placePokemon(it);
-          input.focus();
-          input.select();
+          // Fokus: auf mobile bleiben wir im mobilen Input
+          if (isMobileView() && mIn){ mIn.focus(); mIn.select(); }
+          else { input.focus(); input.select(); }
         });
         if (idx === 0) b.classList.add('active');
         dd.appendChild(b);
@@ -1228,7 +1338,62 @@
       buttons[ddIndex]?.classList.add('active');
       buttons[ddIndex]?.scrollIntoView({block:'nearest'});
     });
+
     document.addEventListener('click', (e) => { if (!e.target.closest('.field')) hideDD(); });
+
+    // ===== Mobile Bar wiring =====
+    function syncMobileDeleteLabel(){
+      if (!mDelete) return;
+      mDelete.textContent = deleteMode ? 'Abbrechen' : 'Löschen';
+    }
+
+    // Mobile buttons trigger existing handlers (single source of truth)
+    mRandom?.addEventListener('click', () => document.getElementById('randomBtn')?.click());
+    mDelete?.addEventListener('click', () => document.getElementById('deleteBtn')?.click());
+    mExport?.addEventListener('click', () => document.getElementById('exportBtn')?.click());
+    mTour?.addEventListener('click', () => document.getElementById('tutorialBtn')?.click());
+
+    // Mobile input mirrors to desktop input so Autocomplete remains identical
+    function setMainInputValue(v){
+      input.value = v;
+      input.dispatchEvent(new Event('input', { bubbles:true }));
+    }
+
+    mIn?.addEventListener('input', () => {
+      setMainInputValue(mIn.value);
+    });
+
+    // Key handling on mobile: Enter/Arrows/Escape -> forward to main input logic
+    mIn?.addEventListener('keydown', (e) => {
+      // forward keyboard handling by cloning key value
+      // (we keep native behavior, but want dropdown navigation and Enter selection)
+      const evt = new KeyboardEvent('keydown', {
+        key: e.key,
+        code: e.code,
+        keyCode: e.keyCode,
+        which: e.which,
+        bubbles: true
+      });
+      input.dispatchEvent(evt);
+
+      if (e.key === 'Enter'){
+        // keep value synced (in case exact match normalized changed)
+        mIn.value = input.value;
+      }
+      if (e.key === 'Escape'){
+        hideDD();
+      }
+    });
+
+    // Prevent page from "pull-to-refresh" / accidental scroll while swiping inside grid on mobile (soft)
+    // (keine aggressive prevention, nur minimale Hilfe)
+    let touchStartY = 0;
+    document.addEventListener('touchstart', (e) => { touchStartY = e.touches[0]?.clientY ?? 0; }, {passive:true});
+    document.addEventListener('touchmove', (e) => {
+      if (!isMobileView()) return;
+      // allow normal scrolling if user scrolls outside stage
+      // (no-op; kept intentionally minimal)
+    }, {passive:true});
 
     // ===== background picker (optional local; nur Chrome/Edge) =====
     let bgObjectUrl = null;
@@ -1365,7 +1530,7 @@
       refreshAllCommunityOverlays();
     }
 
-    // ===== Tutorial logic (Spotlight + anchored card) =====
+    // ===== Tutorial logic =====
     function clearTourGlows(){
       document.querySelectorAll('.tourGlow').forEach(el => el.classList.remove('tourGlow'));
     }
@@ -1390,7 +1555,7 @@ Nehme einfach das Pokémon, das DU für am passendsten hältst.`
       {
         text:
 `Um die Tabelle zu füllen, klicke hier auf „Zufälliges leeres Feld“.`,
-        highlight: () => [document.getElementById('randomBtn')]
+        highlight: () => [isMobileView() ? document.getElementById('mRandom') : document.getElementById('randomBtn')]
       },
       {
         text:
@@ -1399,7 +1564,8 @@ Nehme einfach das Pokémon, das DU für am passendsten hältst.`
 Dann kannst Du erneut ein zufälliges leeres Feld auswählen lassen, bis alle Felder gefüllt sind.`,
         highlight: () => {
           const { cell, col, row } = getExampleCellAndHeaders();
-          return [document.getElementById('pokeInput'), cell, col, row];
+          const inp = isMobileView() ? document.getElementById('mobilePokeInput') : document.getElementById('pokeInput');
+          return [inp, cell, col, row];
         }
       },
       {
@@ -1414,7 +1580,7 @@ Klicke auf „Export“, benenne die .json Datei nach Dir (z.B. „DerHaseMitHut
 Dieser Name würde dann im Video sichtbar sein.
 
 Im automatisch geöffneten Google Formular lädst Du dann diese .json Datei hoch. Fertig!`,
-        highlight: () => [document.getElementById('exportBtn')]
+        highlight: () => [isMobileView() ? document.getElementById('mExport') : document.getElementById('exportBtn')]
       },
       {
         text:
@@ -1447,44 +1613,16 @@ Hase!`
         tourDim.style.opacity = '1';
         return;
       }
-      // Spotlight aktiv: Dimmer "Loch" nutzen, damit Highlight NICHT dunkel ist
+      // (wie bei dir gewünscht/ok): Dimmer aus wenn wir highlighten
       tourDim.style.opacity = '0';
-      tourSpot.style.display = 'block';
-
-      const pad = 12;
-      const x = rect.left - pad;
-      const y = rect.top - pad;
-      const w = (rect.right - rect.left) + pad*2;
-      const h = (rect.bottom - rect.top) + pad*2;
-      const r = 18;
-
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-
-      // clip-path path: Outer rect minus rounded inner rect
-      // (funktioniert in modernen Browsern, inkl. Chrome/Edge, i.d.R. auch Firefox)
-      const path = [
-        `M0 0 H${vw} V${vh} H0 Z`,
-        `M${x+r} ${y}`,
-        `H${x+w-r}`,
-        `Q${x+w} ${y} ${x+w} ${y+r}`,
-        `V${y+h-r}`,
-        `Q${x+w} ${y+h} ${x+w-r} ${y+h}`,
-        `H${x+r}`,
-        `Q${x} ${y+h} ${x} ${y+h-r}`,
-        `V${y+r}`,
-        `Q${x} ${y} ${x+r} ${y}`,
-        `Z`
-      ].join(' ');
-
-      tourSpot.style.clipPath = `path("${path}")`;
+      tourSpot.style.display = 'none';
+      tourSpot.style.clipPath = '';
     }
 
     function positionTourCardNear(rect){
       const margin = 14;
       const gap = 14;
 
-      // Default: center
       if (!rect){
         const cw = tourCard.offsetWidth;
         const ch = tourCard.offsetHeight;
@@ -1503,7 +1641,6 @@ Hase!`
       const spaceBelow = window.innerHeight - rect.bottom - margin;
       const spaceAbove = rect.top - margin;
 
-      // Preferred placement: right -> left -> below -> above
       let left, top;
 
       if (spaceRight >= cw + gap){
@@ -1538,22 +1675,19 @@ Hase!`
 
       clearTourGlows();
 
-      // Highlights sammeln
       let highlightEls = [];
       if (typeof step.highlight === 'function'){
         highlightEls = (step.highlight() || []).filter(Boolean);
         highlightEls.forEach(el => el.classList.add('tourGlow'));
       }
 
-      // Spotlight & Card positioning
       if (!highlightEls.length){
         setSpotlightRect(null);
-        positionTourCardNear(null); // center
+        positionTourCardNear(null);
       } else {
         const rects = highlightEls.map(el => el.getBoundingClientRect());
         const rect = unionRect(rects);
         setSpotlightRect(rect);
-        // Position erst nach Layout-Flush
         requestAnimationFrame(() => positionTourCardNear(rect));
       }
     }
@@ -1564,7 +1698,6 @@ Hase!`
       tourIndex = 0;
       tourEl.classList.add('show');
       tourEl.setAttribute('aria-hidden', 'false');
-      // Erst mal "center" damit Maße da sind
       requestAnimationFrame(() => {
         positionTourCardNear(null);
         renderTour();
@@ -1594,9 +1727,8 @@ Hase!`
     });
 
     tourSkipBtn.addEventListener('click', () => endTour(true));
-    tutorialBtn.addEventListener('click', () => startTour(true));
+    tutorialBtn?.addEventListener('click', () => startTour(true));
 
-    // ESC schließt Tutorial
     document.addEventListener('keydown', (e) => {
       if (!tourActive) return;
       if (e.key === 'Escape') endTour(true);
@@ -1617,6 +1749,7 @@ Hase!`
     function setDeleteMode(on){
       deleteMode = on;
       deleteBtn.textContent = on ? 'Abbrechen' : 'Löschen';
+      syncMobileDeleteLabel();
       cells.forEach(c => c.classList.toggle('delete-mode', on));
     }
     deleteBtn.addEventListener('click', () => setDeleteMode(!deleteMode));
@@ -1693,6 +1826,9 @@ Hase!`
         headerSpans.forEach(sp => fitHeaderText(sp));
         toast('Bereit.');
 
+        setCommStatus();
+        recalcCommunityScore();
+
         // Tutorial automatisch (nur einmal)
         startTour(false);
 
@@ -1708,6 +1844,7 @@ Hase!`
     randomEmptyCell();
     setCommStatus();
     recalcCommunityScore();
+    syncMobileDeleteLabel();
 
     initHosted();
   </script>
