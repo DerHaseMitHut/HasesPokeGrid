@@ -486,35 +486,53 @@
     }
     #tour.show{ display:block; }
 
+    /* Base dimmer (wird genutzt wenn kein Highlight) */
     .tourDim{
       position:absolute;
       inset:0;
-      background: rgba(0,0,0,.58);
+      background: rgba(0,0,0,.62);
+      backdrop-filter: blur(2px);
+      transition: opacity .12s ease;
+    }
+
+    /* Spotlight Layer (macht "Loch" im Dimmer) */
+    #tourSpot{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      display:none;
+    }
+    #tourSpot::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: rgba(0,0,0,.62);
       backdrop-filter: blur(2px);
     }
 
     .tourCard{
       position:absolute;
-      left: 28px;
-      bottom: 28px;
-      width: min(560px, calc(100vw - 56px));
+      width: min(640px, calc(100vw - 56px));
       border-radius: 18px;
-      background: rgba(12,14,22,.92);
+      background: rgba(12,14,22,.94);
       border: 1px solid rgba(255,255,255,.18);
       box-shadow: 0 18px 60px rgba(0,0,0,.65);
-      padding: 16px 16px 14px 16px;
+      padding: 18px 18px 16px 18px;
       color: rgba(255,255,255,.96);
+      transform-origin: center;
     }
 
+    /* Schrift größer (besser lesbar) */
     .tourText{
-      font-size: 14px;
-      line-height: 1.35;
-      color: rgba(255,255,255,.92);
+      font-size: 17px;
+      line-height: 1.45;
+      color: rgba(255,255,255,.94);
       white-space: pre-line;
+      letter-spacing: .2px;
     }
 
     .tourFooter{
-      margin-top: 12px;
+      margin-top: 14px;
       display:flex;
       gap:10px;
       align-items:center;
@@ -525,28 +543,29 @@
     .tourBtn{
       border:1px solid rgba(255,255,255,.16);
       background: rgba(56,214,255,.14);
-      color: rgba(255,255,255,.96);
-      padding: 9px 12px;
+      color: rgba(255,255,255,.98);
+      padding: 11px 14px;
       border-radius: 12px;
       cursor:pointer;
       font-weight:900;
       letter-spacing:.2px;
-      font-size: 13px;
+      font-size: 14px;
     }
     .tourBtn:hover{ background: rgba(56,214,255,.18); }
 
     .tourBtn.ghost{
-      background: rgba(255,255,255,.06);
+      background: rgba(255,255,255,.07);
     }
     .tourBtn.ghost:hover{
-      background: rgba(255,255,255,.09);
+      background: rgba(255,255,255,.10);
     }
     .tourBtn.warn{
-      background: rgba(255,210,74,.14);
-      border-color: rgba(255,210,74,.22);
+      background: rgba(255,210,74,.16);
+      border-color: rgba(255,210,74,.25);
+      color: rgba(255,255,255,.98);
     }
     .tourBtn.warn:hover{
-      background: rgba(255,210,74,.18);
+      background: rgba(255,210,74,.20);
     }
 
     .tourStep{
@@ -555,9 +574,9 @@
       bottom: 26px;
       padding: 8px 10px;
       border-radius: 999px;
-      background: rgba(0,0,0,.38);
+      background: rgba(0,0,0,.40);
       border: 1px solid rgba(255,255,255,.14);
-      color: rgba(255,255,255,.85);
+      color: rgba(255,255,255,.88);
       font-size: 12px;
       font-weight: 900;
       letter-spacing: .4px;
@@ -567,16 +586,14 @@
     .tourGlow{
       position:relative;
       z-index: 9998 !important;
-      outline: 3px solid rgba(255,210,74,.70);
+      outline: 3px solid rgba(255,210,74,.78);
       outline-offset: 3px;
       border-radius: 16px;
       box-shadow:
         0 0 0 2px rgba(255,210,74,.22) inset,
-        0 26px 70px rgba(255,210,74,.22),
-        0 0 0 9999px rgba(0,0,0,.0); /* nur zur “Stabilität” */
+        0 26px 70px rgba(255,210,74,.22);
     }
 
-    /* Wenn wir auf Zellen highlighten, soll es hübsch passen */
     .cell.tourGlow{ border-radius: 20px; }
   </style>
 </head>
@@ -586,8 +603,10 @@
 
   <!-- Tutorial Overlay -->
   <div id="tour" aria-hidden="true">
-    <div class="tourDim"></div>
-    <div class="tourCard">
+    <div class="tourDim" id="tourDim"></div>
+    <div id="tourSpot"></div>
+
+    <div class="tourCard" id="tourCard">
       <div class="tourText" id="tourText"></div>
       <div class="tourFooter">
         <button class="tourBtn ghost" id="tourBack">Zurück</button>
@@ -595,6 +614,7 @@
         <button class="tourBtn warn" id="tourNext">Weiter</button>
       </div>
     </div>
+
     <div class="tourStep" id="tourStep"></div>
   </div>
 
@@ -684,7 +704,7 @@
     const SHINY_SPARKLE_URL = `${ASSET_BASE}/ShinySparkle.gif`;
     const SHINY_SOUND_URL   = `${ASSET_BASE}/ShinySound.mp3`;
 
-    // Google Form URL (von dir)
+    // Google Form URL
     const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfgrOxqxCUwZd4MOKgoHKLTXj6AI6Lcu4P_DnsLWy-8VSEXpA/viewform?usp=header";
 
     // ========= CONFIG =========
@@ -693,8 +713,6 @@
 
     const LS_CRY_VOL = 'pokegrid_cry_vol';
     const LS_SHINY_VOL = 'pokegrid_shiny_vol';
-
-    // Tutorial localStorage key
     const LS_TOUR_DONE = 'pokegrid_tutorial_done';
 
     // ========= State =========
@@ -738,6 +756,11 @@
     const tourSkipBtn = document.getElementById('tourSkip');
     const tourNextBtn = document.getElementById('tourNext');
     const tutorialBtn = document.getElementById('tutorialBtn');
+
+    const tourCard = document.getElementById('tourCard');
+    const tourDim = document.getElementById('tourDim');
+    const tourSpot = document.getElementById('tourSpot');
+
     let tourIndex = 0;
     let tourActive = false;
 
@@ -750,6 +773,7 @@
     function setCommStatus(){ commStatus.textContent = `Community-Datensätze: ${communityDatasetCount}`; }
 
     function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+    function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
 
     function loadVolumePrefs(){
       const c = localStorage.getItem(LS_CRY_VOL);
@@ -810,7 +834,7 @@
 
       const padX = (parseFloat(pCS.paddingLeft)||0) + (parseFloat(pCS.paddingRight)||0);
       const padY = (parseFloat(pCS.paddingTop)||0) + (parseFloat(pCS.paddingBottom)||0);
-      const safe = 8;
+      const safe = 10;
 
       const maxW = Math.max(20, parent.clientWidth  - padX - safe);
       const maxH = Math.max(20, parent.clientHeight - padY - safe);
@@ -1279,7 +1303,6 @@
       const payload = buildMySolutionPayload();
       downloadJson(payload, fn);
 
-      // Formular öffnen
       setTimeout(() => {
         window.open(GOOGLE_FORM_URL, '_blank', 'noopener');
       }, 250);
@@ -1342,13 +1365,12 @@
       refreshAllCommunityOverlays();
     }
 
-    // ===== Tutorial logic =====
+    // ===== Tutorial logic (Spotlight + anchored card) =====
     function clearTourGlows(){
       document.querySelectorAll('.tourGlow').forEach(el => el.classList.remove('tourGlow'));
     }
 
     function getExampleCellAndHeaders(){
-      // Wir nehmen (0,0) als Beispielzelle + entsprechende Header
       const cell = cells[0];
       const col = document.getElementById('colHdr0');
       const row = document.getElementById('rowHdr0');
@@ -1405,6 +1427,103 @@ Hase!`
       }
     ];
 
+    function unionRect(rects){
+      const xs1 = rects.map(r=>r.left);
+      const ys1 = rects.map(r=>r.top);
+      const xs2 = rects.map(r=>r.right);
+      const ys2 = rects.map(r=>r.bottom);
+      return {
+        left: Math.min(...xs1),
+        top: Math.min(...ys1),
+        right: Math.max(...xs2),
+        bottom: Math.max(...ys2),
+      };
+    }
+
+    function setSpotlightRect(rect){
+      if (!rect){
+        tourSpot.style.display = 'none';
+        tourSpot.style.clipPath = '';
+        tourDim.style.opacity = '1';
+        return;
+      }
+      // Spotlight aktiv: Dimmer "Loch" nutzen, damit Highlight NICHT dunkel ist
+      tourDim.style.opacity = '0';
+      tourSpot.style.display = 'block';
+
+      const pad = 12;
+      const x = rect.left - pad;
+      const y = rect.top - pad;
+      const w = (rect.right - rect.left) + pad*2;
+      const h = (rect.bottom - rect.top) + pad*2;
+      const r = 18;
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      // clip-path path: Outer rect minus rounded inner rect
+      // (funktioniert in modernen Browsern, inkl. Chrome/Edge, i.d.R. auch Firefox)
+      const path = [
+        `M0 0 H${vw} V${vh} H0 Z`,
+        `M${x+r} ${y}`,
+        `H${x+w-r}`,
+        `Q${x+w} ${y} ${x+w} ${y+r}`,
+        `V${y+h-r}`,
+        `Q${x+w} ${y+h} ${x+w-r} ${y+h}`,
+        `H${x+r}`,
+        `Q${x} ${y+h} ${x} ${y+h-r}`,
+        `V${y+r}`,
+        `Q${x} ${y} ${x+r} ${y}`,
+        `Z`
+      ].join(' ');
+
+      tourSpot.style.clipPath = `path("${path}")`;
+    }
+
+    function positionTourCardNear(rect){
+      const margin = 14;
+      const gap = 14;
+
+      // Default: center
+      if (!rect){
+        const cw = tourCard.offsetWidth;
+        const ch = tourCard.offsetHeight;
+        const x = Math.round((window.innerWidth - cw) / 2);
+        const y = Math.round((window.innerHeight - ch) / 2);
+        tourCard.style.left = `${clamp(x, margin, window.innerWidth - cw - margin)}px`;
+        tourCard.style.top  = `${clamp(y, margin, window.innerHeight - ch - margin)}px`;
+        return;
+      }
+
+      const cw = tourCard.offsetWidth;
+      const ch = tourCard.offsetHeight;
+
+      const spaceRight = window.innerWidth - rect.right - margin;
+      const spaceLeft  = rect.left - margin;
+      const spaceBelow = window.innerHeight - rect.bottom - margin;
+      const spaceAbove = rect.top - margin;
+
+      // Preferred placement: right -> left -> below -> above
+      let left, top;
+
+      if (spaceRight >= cw + gap){
+        left = rect.right + gap;
+        top = clamp(rect.top + (rect.bottom-rect.top)/2 - ch/2, margin, window.innerHeight - ch - margin);
+      } else if (spaceLeft >= cw + gap){
+        left = rect.left - gap - cw;
+        top = clamp(rect.top + (rect.bottom-rect.top)/2 - ch/2, margin, window.innerHeight - ch - margin);
+      } else if (spaceBelow >= ch + gap){
+        left = clamp(rect.left + (rect.right-rect.left)/2 - cw/2, margin, window.innerWidth - cw - margin);
+        top = rect.bottom + gap;
+      } else {
+        left = clamp(rect.left + (rect.right-rect.left)/2 - cw/2, margin, window.innerWidth - cw - margin);
+        top = clamp(rect.top - gap - ch, margin, window.innerHeight - ch - margin);
+      }
+
+      tourCard.style.left = `${Math.round(left)}px`;
+      tourCard.style.top  = `${Math.round(top)}px`;
+    }
+
     function renderTour(){
       const total = TOUR_STEPS.length;
       const step = TOUR_STEPS[tourIndex];
@@ -1418,9 +1537,24 @@ Hase!`
       tourNextBtn.textContent = (tourIndex === total-1) ? 'Fertig' : 'Weiter';
 
       clearTourGlows();
+
+      // Highlights sammeln
+      let highlightEls = [];
       if (typeof step.highlight === 'function'){
-        const els = step.highlight() || [];
-        els.forEach(el => el && el.classList.add('tourGlow'));
+        highlightEls = (step.highlight() || []).filter(Boolean);
+        highlightEls.forEach(el => el.classList.add('tourGlow'));
+      }
+
+      // Spotlight & Card positioning
+      if (!highlightEls.length){
+        setSpotlightRect(null);
+        positionTourCardNear(null); // center
+      } else {
+        const rects = highlightEls.map(el => el.getBoundingClientRect());
+        const rect = unionRect(rects);
+        setSpotlightRect(rect);
+        // Position erst nach Layout-Flush
+        requestAnimationFrame(() => positionTourCardNear(rect));
       }
     }
 
@@ -1430,12 +1564,17 @@ Hase!`
       tourIndex = 0;
       tourEl.classList.add('show');
       tourEl.setAttribute('aria-hidden', 'false');
-      renderTour();
+      // Erst mal "center" damit Maße da sind
+      requestAnimationFrame(() => {
+        positionTourCardNear(null);
+        renderTour();
+      });
     }
 
     function endTour(markDone=true){
       tourActive = false;
       clearTourGlows();
+      setSpotlightRect(null);
       tourEl.classList.remove('show');
       tourEl.setAttribute('aria-hidden', 'true');
       if (markDone) localStorage.setItem(LS_TOUR_DONE, '1');
@@ -1455,7 +1594,6 @@ Hase!`
     });
 
     tourSkipBtn.addEventListener('click', () => endTour(true));
-
     tutorialBtn.addEventListener('click', () => startTour(true));
 
     // ESC schließt Tutorial
@@ -1464,8 +1602,10 @@ Hase!`
       if (e.key === 'Escape') endTour(true);
     });
 
-    // Klick auf Dimmer -> nichts (damit man nicht aus Versehen schließt)
-    // (bewusst kein handler)
+    window.addEventListener('resize', () => {
+      headerSpans.forEach(sp => fitHeaderText(sp));
+      if (tourActive) renderTour();
+    });
 
     // ===== controls =====
     document.getElementById('randomBtn').addEventListener('click', () => {
@@ -1568,10 +1708,6 @@ Hase!`
     randomEmptyCell();
     setCommStatus();
     recalcCommunityScore();
-
-    window.addEventListener('resize', () => {
-      headerSpans.forEach(sp => fitHeaderText(sp));
-    });
 
     initHosted();
   </script>
