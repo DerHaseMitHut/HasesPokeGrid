@@ -1632,10 +1632,10 @@
       { text:
 `Herzlich willkommen zu Hases PokéGrid. Danke, dass Du mitmachst.
 
-Deine Aufgabe ist es, alle 25 Felder der Tabelle mit Pokémon zu füllen.
+Deine Aufgabe ist es, alle 25 Felder der Tabelle mit verschiedenen Pokémon zu füllen.
 Dabei gibt es KEIN richtig oder falsch.
 
-Nehme einfach das Pokémon, das DU für am passendsten hältst.` },
+Nehme einfach das Pokémon, das DU für am passendsten hältst. Achte aber darauf, dass Du kein Pokémon doppelt verwendest!` },
       { text:`Um die Tabelle zu füllen, klicke hier auf „Zufälliges leeres Feld“.`,
         highlight: () => [isMobileView() ? document.getElementById('mRandom') : document.getElementById('randomBtn')] },
       { text:
@@ -1647,7 +1647,7 @@ Dann kannst Du erneut ein zufälliges leeres Feld auswählen lassen, bis alle Fe
           const inp = isMobileView() ? document.getElementById('mobilePokeInput') : document.getElementById('pokeInput');
           return [inp, cell, col, row];
         } },
-      { text:`Wenn Du eine Auswahl ändern möchtest, klicke die Zelle an und füge einfach ein neues Pokémon ein.` },
+      { text:`Wenn Du eine Auswahl ändern möchtest, z.B. weil Du ein Pokémon, dass Du schon genutzt hast, woanders für besser passend findest, klicke die Zelle an und füge einfach ein neues Pokémon ein.` },
       { text:
 `Ist die Tabelle gefüllt, lade mir Deine Antwort hoch:
 
