@@ -33,7 +33,10 @@
 
     let communityDatasetCount = 0;
     const communityCounts = new Map();
-    const communityNames = new Map();
+    // overlayKey(r,c,groupKey) -> Map(rawFormKey -> {count, names:Set, display})
+    // Behält die konkrete Form (z.B. "Choreogel Baile") fest, auch wenn die
+    // Punktzahl über alle Formen einer Art zusammengezählt wird.
+    const communityFormBreakdown = new Map();
     let communityMaxCount = 0;
 
     const communityCellIndex = new Map();
@@ -457,9 +460,6 @@
       cell.classList.add('comm-hit');
       cell.style.setProperty('--commAlpha', String(alpha));
 
-      const set = communityNames.get(k);
-      const namesMultiline = set && set.size ? [...set].sort((a,b)=>a.localeCompare(b)).join('\n') : '—';
-
       let wrap = cell.querySelector('.commBadgeWrap');
       if (!wrap){
         wrap = document.createElement('div');
@@ -475,7 +475,30 @@
         cell.appendChild(wrap);
       }
       wrap.querySelector('.commBadge').textContent = String(count);
-      wrap.querySelector('.tList').textContent = namesMultiline;
+      wrap.querySelector('.tList').innerHTML = buildFormBreakdownHtml(k) || '<div class="inlayMeta">—</div>';
+    }
+
+    // Baut die Aufschlüsselung nach konkreter Form für das "Wer hatte das
+    // hier?"-Popup (z.B. Choreogel Baile 2 / Pom Pom 2 / Sensu 2), auch wenn
+    // die Punktzahl über alle Formen einer Art zusammengezählt wird.
+    function buildFormBreakdownHtml(mapKey){
+      const forms = communityFormBreakdown.get(mapKey);
+      if (!forms || !forms.size) return '';
+
+      const rows = [...forms.values()].sort((a,b) => (b.count-a.count) || a.display.localeCompare(b.display));
+
+      return rows.map(row => {
+        const names = row.names.size ? [...row.names].sort((a,b)=>a.localeCompare(b)).join('\n') : '—';
+        return `
+          <div class="inlayRow">
+            <div class="inlayMon">
+              <span>${escapeHtml(row.display)}</span>
+              <span class="inlayCount">(${row.count})</span>
+            </div>
+            <div class="inlayMeta">${escapeHtml(names)}</div>
+          </div>
+        `;
+      }).join('');
     }
 
     // Lässt die Namensliste im "Wer hatte das hier?"-Popup langsam
@@ -489,9 +512,10 @@
       requestAnimationFrame(() => {
         const overflow = listEl.scrollHeight - viewport.clientHeight;
         if (overflow > 2){
-          const namesCount = (listEl.textContent.match(/\n/g)?.length ?? 0) + 1;
+          // Lesetempo statt Zeilen zählen (robust ggü. beliebigem HTML-Inhalt).
+          const dur = Math.min(30, Math.max(4, overflow / 22));
           listEl.style.setProperty('--scrollDist', `-${overflow}px`);
-          listEl.style.setProperty('--scrollDur', `${Math.max(4, namesCount * 1.3)}s`);
+          listEl.style.setProperty('--scrollDur', `${dur.toFixed(1)}s`);
           listEl.classList.add('autoscroll');
         }
       });
@@ -817,9 +841,12 @@
         communityCounts.set(mapKey, next);
         communityMaxCount = Math.max(communityMaxCount, next);
 
-        const set = communityNames.get(mapKey) || new Set();
-        if (who) set.add(who);
-        communityNames.set(mapKey, set);
+        let forms = communityFormBreakdown.get(mapKey);
+        if (!forms){ forms = new Map(); communityFormBreakdown.set(mapKey, forms); }
+        let frec = forms.get(rawKey);
+        if (!frec){ frec = { count:0, names:new Set(), display: dexByKey.get(rawKey) || rawKey }; forms.set(rawKey, frec); }
+        frec.count += 1;
+        if (who) frec.names.add(who);
 
         const cellKey = `${r},${c}`;
         let byMon = communityCellIndex.get(cellKey);
@@ -852,7 +879,7 @@
       hideAllInlays();
       communityDatasetCount = 0;
       communityCounts.clear();
-      communityNames.clear();
+      communityFormBreakdown.clear();
       communityCellIndex.clear();
       communityMaxCount = 0;
       setCommStatus();
