@@ -1,0 +1,9 @@
+# Legacy local-only assets; the app now loads images/cries from the
+# separate HasesPokeGrid-Assets repo via CDN, not from this repo.
+pokemon/
+Pokemon Cries/
+ShinySound.mp3
+ShinySparkle.gif
+
+# Community-Antworten enthalten Nutzernamen/Daten und bleiben lokal
+Communityantworten/
