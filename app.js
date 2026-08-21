@@ -1045,10 +1045,22 @@ Hase!` }
 
     document.getElementById('exportBtn').addEventListener('click', exportAndOpenForm);
 
-    document.getElementById('formLinkBtn').addEventListener('click', async () => {
+    const formLinkBtn = document.getElementById('formLinkBtn');
+    let formLinkResetTimer = null;
+    function flashFormLinkBtn(text){
+      clearTimeout(formLinkResetTimer);
+      if (!formLinkBtn.dataset.origText) formLinkBtn.dataset.origText = formLinkBtn.textContent;
+      formLinkBtn.textContent = text;
+      formLinkResetTimer = setTimeout(() => {
+        formLinkBtn.textContent = formLinkBtn.dataset.origText;
+      }, 1800);
+    }
+
+    formLinkBtn.addEventListener('click', async () => {
       try{
         await navigator.clipboard.writeText(GOOGLE_FORM_URL);
         toast('Formular-Link kopiert!');
+        flashFormLinkBtn('✅ Link kopiert!');
       }catch{
         const ta = document.createElement('textarea');
         ta.value = GOOGLE_FORM_URL;
@@ -1056,8 +1068,14 @@ Hase!` }
         ta.style.opacity = '0';
         document.body.appendChild(ta);
         ta.select();
-        try{ document.execCommand('copy'); toast('Formular-Link kopiert!'); }
-        catch{ toast('Kopieren fehlgeschlagen.'); }
+        try{
+          document.execCommand('copy');
+          toast('Formular-Link kopiert!');
+          flashFormLinkBtn('✅ Link kopiert!');
+        }catch{
+          toast('Kopieren fehlgeschlagen.');
+          flashFormLinkBtn('❌ Kopieren fehlgeschlagen');
+        }
         ta.remove();
       }
     });
