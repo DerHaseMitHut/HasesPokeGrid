@@ -905,7 +905,7 @@
 Deine Aufgabe ist es, alle 25 Felder der Tabelle mit verschiedenen Pokémon zu füllen.
 Dabei gibt es KEIN richtig oder falsch.
 
-Nehme einfach das Pokémon, das DU für am passendsten hältst. Achte aber darauf, dass Du kein Pokémon doppelt verwendest!` },
+Nehme einfach das Pokémon, das DU für am passendsten hältst. Achte aber darauf, dass Du A) kein Pokémon doppelt verwendest und B) das Pokémon auf BEIDE Kategorien zutreffen muss!` },
       { text:`Um die Tabelle zu füllen, klicke hier auf „Zufälliges leeres Feld“.`,
         highlight: () => [isMobileView() ? document.getElementById('mRandom') : document.getElementById('randomBtn')] },
       { text:
