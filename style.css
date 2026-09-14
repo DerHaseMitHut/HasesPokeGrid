@@ -408,6 +408,15 @@
     body.versus-mode .cell > .commBadgeWrap,
     body.versus-mode .cell > .inlayOverlay{ display:none; }
     body.versus-mode .cell.comm-hit::before{ opacity:0; }
+    /* Die normale Einzelspieler-Auswahl (.cell.selected, blau) gehört zum
+       normalContent-Modus und bleibt sonst als stehengebliebene alte
+       Auswahl dauerhaft sichtbar, obwohl im Versus-Modus die Quads selbst
+       ihre eigene .quad.selected-Markierung haben. */
+    body.versus-mode .cell.selected{
+      background:none;
+      border-color: rgba(255,255,255,.11);
+      box-shadow:none;
+    }
 
     .versusQuads{
       position:absolute;
