@@ -22,6 +22,11 @@
     const LS_CRY_VOL = 'pokegrid_cry_vol';
     const LS_SHINY_VOL = 'pokegrid_shiny_vol';
     const LS_TOUR_DONE = 'pokegrid_tutorial_done';
+    const LS_VERSUS_DATA = 'pokegrid_versus_data';
+
+    // ===== VERSUS MODE config =====
+    // Passwort für den Versus-Modus. Hier einfach den Wert ändern, um es anzupassen.
+    const VERSUS_PASSWORD = "youtubehase";
 
     // ========= State =========
     let dex = [];
@@ -41,6 +46,11 @@
 
     const communityCellIndex = new Map();
     let otherHoverMode = false;
+
+    // versusData[cellIdx] = [ {pid,pokeKey}|null, ... ] Reihenfolge: 0=TL,1=TR,2=BL,3=BR
+    let versusMode = false;
+    let selectedQuad = null; // { cellIdx, quad }
+    let versusData = new Array(25).fill(null).map(() => [null, null, null, null]);
 
     let shinyAudio = new Audio();
     const cryAudio = new Audio();
@@ -300,13 +310,13 @@
       const ov = cell.querySelector('.inlayOverlay');
       if (ov) ov.classList.remove('show');
     }
-    function hideAllInlays(){ cells.forEach(hideInlay); }
+    function hideAllInlays(){ cells.forEach(hideInlay); hideAllQuadInlays(); }
 
     function clearCell(cell){
       hideInlay(cell);
       cell.dataset.pid = '';
       cell.dataset.pokeKey = '';
-      cell.innerHTML = '<div class="hint">leer</div>';
+      cell.querySelector('.normalContent').innerHTML = '<div class="hint">leer</div>';
       updateCommunityOverlayForCell(cell);
       recalcCommunityScore();
     }
@@ -334,8 +344,7 @@
 
     function getPrettyNameFromKey(key){ return groupDisplayByGroupKey.get(key) || dexByKey.get(key) || key; }
 
-    function buildOtherAnswersHtmlForCell(cell){
-      const idx = cell.dataset.idx;
+    function buildOtherAnswersHtml(idx, ownKey){
       if (idx == null) return '';
       const {r,c} = idxToRC(idx);
 
@@ -343,7 +352,7 @@
       const byMon = communityCellIndex.get(cellKey);
       if (!byMon) return '';
 
-      const currentKey = toGroupKey(cell.dataset.pokeKey || '');
+      const currentKey = toGroupKey(ownKey || '');
       const rows = [];
 
       for (const [k, rec] of byMon.entries()){
@@ -370,11 +379,27 @@
       `).join('');
     }
 
+    function buildOtherAnswersHtmlForCell(cell){
+      const idx = cell.dataset.idx;
+      if (idx == null) return '';
+      return buildOtherAnswersHtml(idx, cell.dataset.pokeKey);
+    }
+
     // cell events
     cells.forEach((c, idx) => {
       c.dataset.idx = String(idx);
 
+      // Bisherigen Inhalt (Hint/Bild) in einen Wrapper packen, damit er
+      // unabhängig von den Versus-Quads geleert/ersetzt werden kann.
+      const normalContent = document.createElement('div');
+      normalContent.className = 'normalContent';
+      while (c.firstChild) normalContent.appendChild(c.firstChild);
+      c.appendChild(normalContent);
+
+      buildVersusQuads(c, idx);
+
       c.addEventListener('click', () => {
+        if (versusMode) return;
         if (deleteMode){
           if (c.dataset.pid) clearCell(c);
           return;
@@ -383,6 +408,7 @@
       });
 
       c.addEventListener('mouseenter', () => {
+        if (versusMode) return;
         if (isMobileView()) return;
         if (!otherHoverMode) return;
         if (!c.dataset.pid) return;
@@ -394,6 +420,7 @@
       });
 
       c.addEventListener('mouseleave', () => {
+        if (versusMode) return;
         if (isMobileView()) return;
         hideInlay(c);
       });
@@ -417,7 +444,7 @@
         c.classList.remove('marked','selected','delete-mode');
         c.dataset.pid = '';
         c.dataset.pokeKey = '';
-        c.innerHTML = '<div class="hint">leer</div>';
+        c.querySelector('.normalContent').innerHTML = '<div class="hint">leer</div>';
         updateCommunityOverlayForCell(c);
       });
       deleteMode = false;
@@ -537,7 +564,9 @@
 
     function refreshAllCommunityOverlays(){
       cells.forEach(c => updateCommunityOverlayForCell(c));
+      cells.forEach((c, idx) => quadEls(idx).forEach(q => updateCommunityOverlayForQuad(q)));
       recalcCommunityScore();
+      recalcVersusScores();
     }
 
     // ===== placing pokemon =====
@@ -590,11 +619,12 @@
       selectedCell.dataset.pid = String(entry.id);
       selectedCell.dataset.pokeKey = String(entry.key || normKey(entry.display || ''));
 
-      selectedCell.innerHTML = '';
+      const normalContent = selectedCell.querySelector('.normalContent');
+      normalContent.innerHTML = '';
       const img = document.createElement('img');
       img.alt = entry.display;
       img.src = url;
-      selectedCell.appendChild(img);
+      normalContent.appendChild(img);
 
       updateCommunityOverlayForCell(selectedCell);
       recalcCommunityScore();
@@ -605,6 +635,318 @@
       } else {
         playCry(entry.id);
       }
+    }
+
+    // ===== VERSUS MODE =====
+    function quadEls(cellIdx){
+      return Array.from(cells[cellIdx].querySelectorAll('.versusQuads .quad'));
+    }
+    function quadCoords(q){
+      const cellEl = q.closest('.cell');
+      return { cellIdx: Number(cellEl.dataset.idx), quad: Number(q.dataset.quad) };
+    }
+    function isQuadEmpty(q){ return !q.dataset.pid; }
+
+    function hideQuadInlay(q){
+      const ov = q.querySelector('.inlayOverlay');
+      if (ov) ov.classList.remove('show');
+    }
+    function hideAllQuadInlays(){
+      cells.forEach((c, idx) => quadEls(idx).forEach(hideQuadInlay));
+    }
+
+    function ensureQuadInlayOverlay(q){
+      let ov = q.querySelector('.inlayOverlay');
+      if (ov) return ov;
+      ov = document.createElement('div');
+      ov.className = 'inlayOverlay';
+      ov.innerHTML = `<div class="inlayList"></div>`;
+      q.appendChild(ov);
+      ov.addEventListener('mouseenter', () => ov.classList.add('show'));
+      ov.addEventListener('mouseleave', () => ov.classList.remove('show'));
+      return ov;
+    }
+    function showQuadInlay(q, html){
+      const ov = ensureQuadInlayOverlay(q);
+      ov.querySelector('.inlayList').innerHTML = html;
+      ov.classList.add('show');
+    }
+
+    function updateCommunityOverlayForQuad(q){
+      const pokeKey = q.dataset.pokeKey || '';
+      const { cellIdx } = quadCoords(q);
+      if (!pokeKey){
+        q.classList.remove('comm-hit');
+        q.style.removeProperty('--commAlpha');
+        const wrap = q.querySelector('.commBadgeWrap');
+        if (wrap) wrap.remove();
+        return;
+      }
+
+      const {r,c} = idxToRC(cellIdx);
+      const k = overlayKey(r,c,toGroupKey(pokeKey));
+      const count = communityCounts.get(k) || 0;
+
+      if (count <= 0){
+        q.classList.remove('comm-hit');
+        q.style.removeProperty('--commAlpha');
+        const wrap = q.querySelector('.commBadgeWrap');
+        if (wrap) wrap.remove();
+        return;
+      }
+
+      const max = Math.max(1, communityMaxCount);
+      const t = Math.min(1, count / max);
+      const alpha = 0.06 + t * 0.16;
+
+      q.classList.add('comm-hit');
+      q.style.setProperty('--commAlpha', String(alpha));
+
+      let wrap = q.querySelector('.commBadgeWrap');
+      if (!wrap){
+        wrap = document.createElement('div');
+        wrap.className = 'commBadgeWrap';
+        wrap.innerHTML = `
+          <div class="commBadge"></div>
+          <div class="commTip">
+            <div class="tTitle">Wer hatte das hier?</div>
+            <div class="tListViewport"><div class="tList"></div></div>
+          </div>
+        `;
+        wrap.addEventListener('mouseenter', () => applyCommTipAutoscroll(wrap.querySelector('.tList')));
+        q.appendChild(wrap);
+      }
+      wrap.querySelector('.commBadge').textContent = String(count);
+      wrap.querySelector('.tList').innerHTML = buildFormBreakdownHtml(k) || '<div class="inlayMeta">—</div>';
+    }
+
+    function clearQuad(q){
+      hideQuadInlay(q);
+      const { cellIdx, quad } = quadCoords(q);
+      q.dataset.pid = '';
+      q.dataset.pokeKey = '';
+      q.innerHTML = '<div class="hint">leer</div>';
+      versusData[cellIdx][quad] = null;
+      updateCommunityOverlayForQuad(q);
+      saveVersusData();
+      recalcVersusScores();
+    }
+
+    function selectQuadEl(cellIdx, quad){
+      const prev = selectedQuad ? quadEls(selectedQuad.cellIdx)[selectedQuad.quad] : null;
+      if (prev) prev.classList.remove('selected');
+      selectedQuad = { cellIdx, quad };
+      const q = quadEls(cellIdx)[quad];
+      q.classList.add('selected');
+      scrollCellIntoView(q);
+    }
+
+    function versusScoresByPosition(){
+      const totals = [0,0,0,0];
+      for (let idx=0; idx<25; idx++){
+        const {r,c} = idxToRC(idx);
+        versusData[idx].forEach((d, qi) => {
+          if (!d || !d.pokeKey) return;
+          const k = overlayKey(r,c,toGroupKey(d.pokeKey));
+          const cnt = communityCounts.get(k) || 0;
+          if (cnt > 0) totals[qi] += cnt;
+        });
+      }
+      return totals;
+    }
+
+    function recalcVersusScores(){
+      const totals = versusScoresByPosition();
+      const ids = ['scoreTL','scoreTR','scoreBL','scoreBR'];
+      ids.forEach((id,i) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(totals[i]);
+      });
+    }
+
+    function randomEmptyQuadVersus(){
+      const candidates = [];
+      for (let idx=0; idx<25; idx++){
+        if (versusData[idx].some(d => !d)) candidates.push(idx);
+      }
+      if (!candidates.length){ toast('Keine leeren Felder mehr.'); return null; }
+
+      const cellIdx = candidates[Math.floor(Math.random()*candidates.length)];
+      const emptyPositions = [0,1,2,3].filter(i => !versusData[cellIdx][i]);
+      const totals = versusScoresByPosition();
+      const minScore = Math.min(...emptyPositions.map(i => totals[i]));
+      const tied = emptyPositions.filter(i => totals[i] === minScore);
+      const quad = tied[Math.floor(Math.random()*tied.length)];
+
+      cells.forEach(c => c.classList.remove('marked'));
+      cells[cellIdx].classList.add('marked');
+      selectQuadEl(cellIdx, quad);
+      return { cellIdx, quad };
+    }
+
+    async function placePokemonInQuad(entry){
+      if (!entry) return;
+      if (!selectedQuad) randomEmptyQuadVersus();
+      if (!selectedQuad) return;
+
+      const { cellIdx, quad } = selectedQuad;
+      const q = quadEls(cellIdx)[quad];
+      hideQuadInlay(q);
+
+      const wantShiny = Math.random() < SHINY_CHANCE;
+      const url = wantShiny ? SHINY_IMG_URL(entry.id) : IMG_URL(entry.id);
+
+      const pokeKey = String(entry.key || normKey(entry.display || ''));
+      q.dataset.pid = String(entry.id);
+      q.dataset.pokeKey = pokeKey;
+
+      q.innerHTML = '';
+      const img = document.createElement('img');
+      img.alt = entry.display;
+      img.src = url;
+      q.appendChild(img);
+
+      versusData[cellIdx][quad] = { pid: entry.id, pokeKey };
+
+      updateCommunityOverlayForQuad(q);
+      saveVersusData();
+      recalcVersusScores();
+
+      if (wantShiny){
+        playSparkleOnce(q);
+        playShinySoundAndThen(() => playCry(entry.id));
+      } else {
+        playCry(entry.id);
+      }
+    }
+
+    function buildVersusQuads(cell, idx){
+      const wrap = document.createElement('div');
+      wrap.className = 'versusQuads';
+
+      ['tl','tr','bl','br'].forEach((pos, qIdx) => {
+        const q = document.createElement('div');
+        q.className = `quad quad-${pos}`;
+        q.dataset.quad = String(qIdx);
+        q.innerHTML = '<div class="hint">leer</div>';
+
+        q.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!versusMode) return;
+          if (deleteMode){
+            if (q.dataset.pid) clearQuad(q);
+            return;
+          }
+          const { cellIdx, quad } = quadCoords(q);
+          selectQuadEl(cellIdx, quad);
+        });
+
+        q.addEventListener('mouseenter', () => {
+          if (!versusMode) return;
+          if (isMobileView()) return;
+          if (!otherHoverMode) return;
+          if (!q.dataset.pid) return;
+          if (communityDatasetCount <= 0) return;
+          const html = buildOtherAnswersHtmlForQuad(q);
+          if (!html){ hideQuadInlay(q); return; }
+          showQuadInlay(q, html);
+        });
+
+        q.addEventListener('mouseleave', () => {
+          if (!versusMode) return;
+          if (isMobileView()) return;
+          hideQuadInlay(q);
+        });
+
+        wrap.appendChild(q);
+      });
+
+      cell.appendChild(wrap);
+      return wrap;
+    }
+
+    function buildOtherAnswersHtmlForQuad(q){
+      const { cellIdx } = quadCoords(q);
+      return buildOtherAnswersHtml(cellIdx, q.dataset.pokeKey);
+    }
+
+    function resetVersusGrid(){
+      hideAllQuadInlays();
+      cells.forEach((c, idx) => {
+        quadEls(idx).forEach(q => {
+          q.classList.remove('selected');
+          q.dataset.pid = '';
+          q.dataset.pokeKey = '';
+          q.innerHTML = '<div class="hint">leer</div>';
+          updateCommunityOverlayForQuad(q);
+        });
+        c.classList.remove('marked');
+      });
+      versusData = new Array(25).fill(null).map(() => [null, null, null, null]);
+      selectedQuad = null;
+      saveVersusData();
+      recalcVersusScores();
+      randomEmptyQuadVersus();
+    }
+
+    function saveVersusData(){
+      try{ localStorage.setItem(LS_VERSUS_DATA, JSON.stringify(versusData)); }catch{}
+    }
+
+    function loadVersusData(){
+      try{
+        const raw = localStorage.getItem(LS_VERSUS_DATA);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed) || parsed.length !== 25) return;
+        versusData = parsed;
+        cells.forEach((c, idx) => {
+          const quads = quadEls(idx);
+          (versusData[idx] || []).forEach((d, qi) => {
+            const q = quads[qi];
+            if (!q || !d || !d.pokeKey) return;
+            q.dataset.pid = String(d.pid);
+            q.dataset.pokeKey = String(d.pokeKey);
+            q.innerHTML = '';
+            const img = document.createElement('img');
+            img.alt = d.pokeKey;
+            img.src = IMG_URL(d.pid);
+            q.appendChild(img);
+          });
+        });
+      }catch{}
+    }
+
+    function applyVersusModeUI(){
+      document.body.classList.toggle('versus-mode', versusMode);
+      const versusBtn = document.getElementById('versusBtn');
+      if (versusBtn) versusBtn.textContent = versusMode ? 'Versus-Modus: AN' : 'Versus-Modus';
+      hideAllInlays();
+      cells.forEach(c => c.classList.remove('marked'));
+      if (versusMode){
+        if (!selectedQuad) randomEmptyQuadVersus();
+      } else if (!selectedCell) {
+        selectCell(cells[0]);
+      }
+    }
+
+    function toggleVersusMode(){
+      if (!versusMode){
+        const pw = prompt('Versus-Modus Passwort:');
+        if (pw === null) return;
+        if (pw !== VERSUS_PASSWORD){ toast('Falsches Passwort.'); return; }
+        versusMode = true;
+        toast('Versus-Modus aktiviert.');
+      } else {
+        versusMode = false;
+        toast('Versus-Modus deaktiviert.');
+      }
+      applyVersusModeUI();
+    }
+
+    function place(entry){
+      if (versusMode) placePokemonInQuad(entry);
+      else placePokemon(entry);
     }
 
     // ===== autocomplete (DESKTOP) =====
@@ -619,7 +961,7 @@
         b.addEventListener('click', () => {
           input.value = it.display;
           hideDD();
-          placePokemon(it);
+          place(it);
           input.focus(); input.select();
         });
         if (idx === 0) b.classList.add('active');
@@ -656,7 +998,7 @@
         if (e.key === 'Enter'){
           const q = normKey(input.value);
           const exact = dex.find(x => (x.key||'') === q) || null;
-          if (exact) placePokemon(exact);
+          if (exact) place(exact);
         }
         return;
       }
@@ -690,7 +1032,7 @@
         b.addEventListener('click', () => {
           mIn.value = it.display;
           hideMDD();
-          placePokemon(it);
+          place(it);
           mIn.focus();
           mIn.select();
         });
@@ -716,7 +1058,7 @@
           if (e.key === 'Enter'){
             const q = normKey(mIn.value);
             const exact = dex.find(x => (x.key||'') === q) || null;
-            if (exact) placePokemon(exact);
+            if (exact) place(exact);
           }
           return;
         }
@@ -1054,7 +1396,8 @@ Hase!` }
     // ===== controls =====
     document.getElementById('randomBtn').addEventListener('click', () => {
       hideAllInlays();
-      randomEmptyCell();
+      if (versusMode) randomEmptyQuadVersus();
+      else randomEmptyCell();
     });
 
     const deleteBtn = document.getElementById('deleteBtn');
@@ -1063,12 +1406,19 @@ Hase!` }
       deleteBtn.textContent = on ? 'Abbrechen' : 'Löschen';
       syncMobileDeleteLabel();
       cells.forEach(c => c.classList.toggle('delete-mode', on));
+      document.querySelectorAll('.quad').forEach(q => q.classList.toggle('delete-mode', on));
     }
     deleteBtn.addEventListener('click', () => setDeleteMode(!deleteMode));
 
     document.getElementById('resetBtn').addEventListener('click', () => {
-      if (confirm('Wirklich alle Zellen leeren? (Titel bleiben)')) resetGrid();
+      if (versusMode){
+        if (confirm('Wirklich den gesamten Versus-Grid leeren?')) resetVersusGrid();
+      } else if (confirm('Wirklich alle Zellen leeren? (Titel bleiben)')) {
+        resetGrid();
+      }
     });
+
+    document.getElementById('versusBtn').addEventListener('click', toggleVersusMode);
 
     document.getElementById('exportBtn').addEventListener('click', exportAndOpenForm);
 
@@ -1133,7 +1483,7 @@ Hase!` }
     document.addEventListener('keydown', (e) => {
       if (tourActive) return;
       if (e.target.matches('input,[contenteditable="true"]')) return;
-      if (e.key.toLowerCase() === 'r') { hideAllInlays(); randomEmptyCell(); }
+      if (e.key.toLowerCase() === 'r') { hideAllInlays(); if (versusMode) randomEmptyQuadVersus(); else randomEmptyCell(); }
       if (e.key.toLowerCase() === 'd') setDeleteMode(!deleteMode);
       if (e.key.toLowerCase() === 'h') togglePresenter();
     });
@@ -1190,5 +1540,7 @@ Hase!` }
     setCommStatus();
     recalcCommunityScore();
     syncMobileDeleteLabel();
+    loadVersusData();
+    recalcVersusScores();
 
     initHosted();

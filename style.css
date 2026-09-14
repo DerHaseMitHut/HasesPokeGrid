@@ -126,6 +126,30 @@
       text-shadow: 0 10px 30px rgba(0,0,0,.45);
     }
 
+    .cornerQuads{
+      display:none;
+      width:100%;
+      height:100%;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap:6px;
+    }
+    .cq{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:950;
+      font-size:15px;
+      border-radius:10px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.16);
+      color: rgba(255,255,255,.96);
+    }
+    body.versus-mode .cornerTitle,
+    body.versus-mode .cornerValue{ display:none; }
+    body.versus-mode .cornerQuads{ display:grid; }
+    body.versus-mode .cornerInfo{ align-items:stretch; justify-content:stretch; }
+
     .hdr, .rowhdr{
       border-radius:18px;
       background: rgba(255,255,255,.065);
@@ -375,6 +399,153 @@
       border-radius: 999px;
       border: 2px solid rgba(12,14,22,.65);
     }
+
+    /* ===== VERSUS MODE: 4 Viertel pro Feld ===== */
+    .normalContent{ display:contents; }
+    body.versus-mode .normalContent{ display:none; }
+    /* Normal-Modus-Badge/Overlay hängen direkt an .cell (nicht im .normalContent-Wrapper) -
+       im Versus-Modus müssen sie ebenfalls ausgeblendet werden, damit sie nicht über den Quads liegen. */
+    body.versus-mode .cell > .commBadgeWrap,
+    body.versus-mode .cell > .inlayOverlay{ display:none; }
+    body.versus-mode .cell.comm-hit::before{ opacity:0; }
+
+    .versusQuads{
+      position:absolute;
+      inset:0;
+      z-index:2;
+      display:none;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap:6px;
+      padding:6px;
+    }
+    body.versus-mode .versusQuads{ display:grid; }
+
+    .quad{
+      position:relative;
+      border-radius:12px;
+      background: rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.12);
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      min-width:0;
+      min-height:0;
+      transition: background .15s ease, border-color .15s ease;
+    }
+    .quad:hover{ border-color: rgba(255,255,255,.22); }
+    .quad.selected{
+      background: rgba(56,214,255,.20);
+      border-color: rgba(56,214,255,.5);
+      box-shadow: 0 0 0 2px rgba(56,214,255,.16) inset;
+    }
+    .quad.delete-mode{ border-color: rgba(255,110,110,.32); }
+
+    .quad.comm-hit::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: rgba(56,214,255, var(--commAlpha, 0));
+      pointer-events:none;
+      z-index:1;
+    }
+
+    .quad img{
+      width:94%;
+      height:94%;
+      object-fit:contain;
+      filter: drop-shadow(0 8px 12px rgba(0,0,0,.42));
+      z-index:2;
+    }
+    .quad .hint{
+      color: rgba(255,255,255,.28);
+      font-weight:800;
+      font-size:9px;
+      letter-spacing:.4px;
+      text-transform:uppercase;
+      user-select:none;
+      z-index:2;
+    }
+
+    .quad .commBadgeWrap{ position:absolute; inset:4px; z-index:8; pointer-events:none; }
+    .quad .commBadge{
+      position:absolute;
+      top:0; right:0;
+      padding:2px 5px;
+      border-radius:999px;
+      font-weight:900;
+      font-size:10px;
+      line-height:1;
+      background: rgba(0,0,0,.5);
+      border:1px solid rgba(255,255,255,.18);
+      color:#fff;
+      min-width:18px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events:auto;
+      backdrop-filter: blur(4px);
+    }
+    .quad .commTip{
+      position:absolute;
+      inset:0;
+      border-radius:10px;
+      background: rgba(12,14,22,.94);
+      border:1px solid rgba(255,255,255,.18);
+      display:none;
+      flex-direction:column;
+      pointer-events:none;
+      padding:6px;
+      overflow:hidden;
+      font-size:9px;
+      line-height:1.2;
+      white-space:pre-line;
+      z-index:60;
+      color: rgba(255,255,255,.94);
+    }
+    .quad .commTip .tTitle{
+      flex:0 0 auto;
+      font-weight:900;
+      text-transform:uppercase;
+      font-size:8px;
+      letter-spacing:.6px;
+      color: rgba(255,255,255,.7);
+      margin-bottom:4px;
+    }
+    .quad .commTip .tListViewport{ flex:1 1 auto; min-height:0; overflow:hidden; position:relative; }
+    .quad .commBadgeWrap:hover .commTip{ display:flex; }
+
+    .quad .inlayOverlay{
+      position:absolute;
+      inset:4px;
+      border-radius:10px;
+      background: rgba(12,14,22,.94);
+      border:1px solid rgba(255,255,255,.18);
+      z-index:60;
+      display:none;
+      padding:6px;
+      overflow:hidden;
+      pointer-events:auto;
+    }
+    .quad .inlayOverlay.show{ display:block; }
+    .quad .inlayList{
+      font-size:9px;
+      line-height:1.15;
+      max-height:100%;
+      overflow:auto;
+      white-space:normal;
+    }
+    .quad .inlayRow{
+      margin:4px 0;
+      padding-top:4px;
+      border-top:1px solid rgba(255,255,255,.10);
+    }
+    .quad .inlayRow:first-child{ margin-top:0; padding-top:0; border-top:0; }
+    .quad .inlayMon{ font-weight:900; display:flex; justify-content:space-between; gap:6px; }
+    .quad .inlayCount{ opacity:.75; font-weight:900; white-space:nowrap; }
+    .quad .inlayMeta{ color: rgba(255,255,255,.78); font-size:8px; margin-top:1px; white-space:pre-line; }
 
     .panel{
       border:1px solid var(--line);
