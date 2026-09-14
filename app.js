@@ -660,21 +660,40 @@
         <div class="tTitle"></div>
         <div class="tListViewport"><div class="tList"></div></div>
       `;
-      // pointer-events:none (siehe CSS) - Hover-Events "durchlaufen" das
-      // Overlay zum darunterliegenden Auslöser (Badge/Viertel), damit es
-      // sich nicht selbst durch Verdecken des Auslösers wegklickt.
+      // Standardmäßig pointer-events:none (siehe CSS) - Hover-Events
+      // "durchlaufen" das Overlay zum darunterliegenden Badge, damit es sich
+      // nicht selbst durch Verdecken des Auslösers wegklickt (passiver
+      // Auto-Scroll-Tooltip, s. showVersusCellOverlay unten).
+      // Im "interactive"-Modus (Community-Antworten) ist es dagegen
+      // pointer-events:auto und wird nur über sein EIGENES mouseleave
+      // geschlossen, damit man selbst in der Liste scrollen kann.
+      ov.addEventListener('mouseenter', () => ov.classList.add('show'));
+      ov.addEventListener('mouseleave', () => ov.classList.remove('show'));
       cell.appendChild(ov);
       return ov;
     }
-    function showVersusCellOverlay(cellIdx, title, html){
+    // interactive=false (Standard): passiver Tooltip, schließt sich automatisch
+    //   mit dem Auslöser (Badge) und scrollt selbst langsam durch, falls die
+    //   Liste nicht komplett reinpasst.
+    // interactive=true: für "Community-Antworten" - bleibt offen, solange man
+    //   selbst mit der Maus drin ist, und ist manuell scrollbar.
+    function showVersusCellOverlay(cellIdx, title, html, interactive){
       const ov = ensureVersusCellOverlay(cellIdx);
       const titleEl = ov.querySelector('.tTitle');
       titleEl.textContent = title || '';
       titleEl.style.display = title ? '' : 'none';
       const list = ov.querySelector('.tList');
       list.innerHTML = html;
+      ov.classList.toggle('interactive', !!interactive);
       ov.classList.add('show');
-      applyCommTipAutoscroll(list);
+      if (interactive){
+        list.classList.remove('autoscroll');
+        list.style.removeProperty('--scrollDist');
+        list.style.removeProperty('--scrollDur');
+        list.scrollTop = 0;
+      } else {
+        applyCommTipAutoscroll(list);
+      }
     }
     function hideVersusCellOverlay(cellIdx){
       const ov = cells[cellIdx].querySelector(':scope > .versusCellOverlay');
@@ -881,14 +900,12 @@
           if (communityDatasetCount <= 0) return;
           const { cellIdx } = quadCoords(q);
           const html = buildOtherAnswersHtmlForQuad(q);
-          if (!html){ hideVersusCellOverlay(cellIdx); return; }
-          showVersusCellOverlay(cellIdx, null, html);
-        });
-
-        q.addEventListener('mouseleave', () => {
-          if (!versusMode) return;
-          if (isMobileView()) return;
-          hideVersusCellOverlay(quadCoords(q).cellIdx);
+          if (!html) return;
+          // interactive=true: bleibt offen und manuell scrollbar, solange man
+          // mit der Maus in der Zelle/dem Overlay bleibt; das Overlay schließt
+          // sich über sein EIGENES mouseleave (s. ensureVersusCellOverlay),
+          // nicht über das Verlassen dieses einzelnen Viertels.
+          showVersusCellOverlay(cellIdx, null, html, true);
         });
 
         wrap.appendChild(q);

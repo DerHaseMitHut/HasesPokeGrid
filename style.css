@@ -453,8 +453,8 @@
     }
 
     .quad img{
-      width:88%;
-      height:88%;
+      width:140%;
+      height:140%;
       object-fit:contain;
       filter: drop-shadow(0 8px 12px rgba(0,0,0,.42));
       z-index:2;
@@ -509,6 +509,9 @@
       pointer-events:none;
     }
     .versusCellOverlay.show{ display:flex; }
+    /* Community-Antworten: bleibt offen & manuell scrollbar statt passiv
+       durchzuscrollen, solange die Maus selbst im Overlay ist. */
+    .versusCellOverlay.interactive{ pointer-events:auto; }
     .versusCellOverlay .tTitle{
       flex:0 0 auto;
       font-weight:900;
