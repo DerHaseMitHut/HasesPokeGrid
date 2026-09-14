@@ -764,6 +764,18 @@
       });
     }
 
+    // Wählt unter den noch leeren Vierteln EINER Zelle das des Spielers mit
+    // den wenigsten Punkten (Gleichstand -> zufällig). Gibt null zurück, wenn
+    // die Zelle bereits voll ist.
+    function pickOrderedEmptyQuad(cellIdx){
+      const emptyPositions = [0,1,2,3].filter(i => !versusData[cellIdx][i]);
+      if (!emptyPositions.length) return null;
+      const totals = versusScoresByPosition();
+      const minScore = Math.min(...emptyPositions.map(i => totals[i]));
+      const tied = emptyPositions.filter(i => totals[i] === minScore);
+      return tied[Math.floor(Math.random()*tied.length)];
+    }
+
     function randomEmptyQuadVersus(){
       const candidates = [];
       for (let idx=0; idx<25; idx++){
@@ -772,11 +784,7 @@
       if (!candidates.length){ toast('Keine leeren Felder mehr.'); return null; }
 
       const cellIdx = candidates[Math.floor(Math.random()*candidates.length)];
-      const emptyPositions = [0,1,2,3].filter(i => !versusData[cellIdx][i]);
-      const totals = versusScoresByPosition();
-      const minScore = Math.min(...emptyPositions.map(i => totals[i]));
-      const tied = emptyPositions.filter(i => totals[i] === minScore);
-      const quad = tied[Math.floor(Math.random()*tied.length)];
+      const quad = pickOrderedEmptyQuad(cellIdx);
 
       cells.forEach(c => c.classList.remove('marked'));
       cells[cellIdx].classList.add('marked');
@@ -817,6 +825,19 @@
         playShinySoundAndThen(() => playCry(entry.id));
       } else {
         playCry(entry.id);
+      }
+
+      // Automatisch zum nächsten freien Viertel DERSELBEN Zelle springen
+      // (nach Punktestand geordnet). Ist die Zelle voll, Auswahl aufheben -
+      // für die nächste Zelle dann "Zufälliges leeres Feld" nutzen.
+      const nextQuad = pickOrderedEmptyQuad(cellIdx);
+      if (nextQuad != null){
+        selectQuadEl(cellIdx, nextQuad);
+      } else {
+        q.classList.remove('selected');
+        cells[cellIdx].classList.remove('marked');
+        selectedQuad = null;
+        toast('Feld komplett! Nächstes Feld mit „Zufälliges leeres Feld“ wählen.');
       }
     }
 
