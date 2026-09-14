@@ -310,7 +310,7 @@
       const ov = cell.querySelector('.inlayOverlay');
       if (ov) ov.classList.remove('show');
     }
-    function hideAllInlays(){ cells.forEach(hideInlay); hideAllQuadInlays(); }
+    function hideAllInlays(){ cells.forEach(hideInlay); hideAllVersusCellOverlays(); }
 
     function clearCell(cell){
       hideInlay(cell);
@@ -647,29 +647,41 @@
     }
     function isQuadEmpty(q){ return !q.dataset.pid; }
 
-    function hideQuadInlay(q){
-      const ov = q.querySelector('.inlayOverlay');
-      if (ov) ov.classList.remove('show');
-    }
-    function hideAllQuadInlays(){
-      cells.forEach((c, idx) => quadEls(idx).forEach(hideQuadInlay));
-    }
-
-    function ensureQuadInlayOverlay(q){
-      let ov = q.querySelector('.inlayOverlay');
+    // Überlagerung, die IMMER das ganze Feld (alle 4 Viertel) überspannt -
+    // egal ob ausgelöst durch die Zähl-Badge eines Viertels oder durch
+    // Hover auf ein Viertel ("Community-Antworten").
+    function ensureVersusCellOverlay(cellIdx){
+      const cell = cells[cellIdx];
+      let ov = cell.querySelector(':scope > .versusCellOverlay');
       if (ov) return ov;
       ov = document.createElement('div');
-      ov.className = 'inlayOverlay';
-      ov.innerHTML = `<div class="inlayList"></div>`;
-      q.appendChild(ov);
-      ov.addEventListener('mouseenter', () => ov.classList.add('show'));
-      ov.addEventListener('mouseleave', () => ov.classList.remove('show'));
+      ov.className = 'versusCellOverlay';
+      ov.innerHTML = `
+        <div class="tTitle"></div>
+        <div class="tListViewport"><div class="tList"></div></div>
+      `;
+      // pointer-events:none (siehe CSS) - Hover-Events "durchlaufen" das
+      // Overlay zum darunterliegenden Auslöser (Badge/Viertel), damit es
+      // sich nicht selbst durch Verdecken des Auslösers wegklickt.
+      cell.appendChild(ov);
       return ov;
     }
-    function showQuadInlay(q, html){
-      const ov = ensureQuadInlayOverlay(q);
-      ov.querySelector('.inlayList').innerHTML = html;
+    function showVersusCellOverlay(cellIdx, title, html){
+      const ov = ensureVersusCellOverlay(cellIdx);
+      const titleEl = ov.querySelector('.tTitle');
+      titleEl.textContent = title || '';
+      titleEl.style.display = title ? '' : 'none';
+      const list = ov.querySelector('.tList');
+      list.innerHTML = html;
       ov.classList.add('show');
+      applyCommTipAutoscroll(list);
+    }
+    function hideVersusCellOverlay(cellIdx){
+      const ov = cells[cellIdx].querySelector(':scope > .versusCellOverlay');
+      if (ov) ov.classList.remove('show');
+    }
+    function hideAllVersusCellOverlays(){
+      cells.forEach((c, idx) => hideVersusCellOverlay(idx));
     }
 
     function updateCommunityOverlayForQuad(q){
@@ -678,8 +690,8 @@
       if (!pokeKey){
         q.classList.remove('comm-hit');
         q.style.removeProperty('--commAlpha');
-        const wrap = q.querySelector('.commBadgeWrap');
-        if (wrap) wrap.remove();
+        const badge = q.querySelector('.commBadge');
+        if (badge) badge.remove();
         return;
       }
 
@@ -690,8 +702,8 @@
       if (count <= 0){
         q.classList.remove('comm-hit');
         q.style.removeProperty('--commAlpha');
-        const wrap = q.querySelector('.commBadgeWrap');
-        if (wrap) wrap.remove();
+        const badge = q.querySelector('.commBadge');
+        if (badge) badge.remove();
         return;
       }
 
@@ -702,27 +714,26 @@
       q.classList.add('comm-hit');
       q.style.setProperty('--commAlpha', String(alpha));
 
-      let wrap = q.querySelector('.commBadgeWrap');
-      if (!wrap){
-        wrap = document.createElement('div');
-        wrap.className = 'commBadgeWrap';
-        wrap.innerHTML = `
-          <div class="commBadge"></div>
-          <div class="commTip">
-            <div class="tTitle">Wer hatte das hier?</div>
-            <div class="tListViewport"><div class="tList"></div></div>
-          </div>
-        `;
-        wrap.addEventListener('mouseenter', () => applyCommTipAutoscroll(wrap.querySelector('.tList')));
-        q.appendChild(wrap);
+      let badge = q.querySelector('.commBadge');
+      if (!badge){
+        badge = document.createElement('div');
+        badge.className = 'commBadge';
+        badge.addEventListener('mouseenter', () => {
+          const curKey = q.dataset.pokeKey || '';
+          if (!curKey) return;
+          const {r,c} = idxToRC(cellIdx);
+          const curK = overlayKey(r,c,toGroupKey(curKey));
+          showVersusCellOverlay(cellIdx, 'Wer hatte das hier?', buildFormBreakdownHtml(curK) || '<div class="inlayMeta">—</div>');
+        });
+        badge.addEventListener('mouseleave', () => hideVersusCellOverlay(cellIdx));
+        q.appendChild(badge);
       }
-      wrap.querySelector('.commBadge').textContent = String(count);
-      wrap.querySelector('.tList').innerHTML = buildFormBreakdownHtml(k) || '<div class="inlayMeta">—</div>';
+      badge.textContent = String(count);
     }
 
     function clearQuad(q){
-      hideQuadInlay(q);
       const { cellIdx, quad } = quadCoords(q);
+      hideVersusCellOverlay(cellIdx);
       q.dataset.pid = '';
       q.dataset.pokeKey = '';
       q.innerHTML = '<div class="hint">leer</div>';
@@ -799,7 +810,7 @@
 
       const { cellIdx, quad } = selectedQuad;
       const q = quadEls(cellIdx)[quad];
-      hideQuadInlay(q);
+      hideVersusCellOverlay(cellIdx);
 
       const wantShiny = Math.random() < SHINY_CHANCE;
       const url = wantShiny ? SHINY_IMG_URL(entry.id) : IMG_URL(entry.id);
@@ -868,15 +879,16 @@
           if (!otherHoverMode) return;
           if (!q.dataset.pid) return;
           if (communityDatasetCount <= 0) return;
+          const { cellIdx } = quadCoords(q);
           const html = buildOtherAnswersHtmlForQuad(q);
-          if (!html){ hideQuadInlay(q); return; }
-          showQuadInlay(q, html);
+          if (!html){ hideVersusCellOverlay(cellIdx); return; }
+          showVersusCellOverlay(cellIdx, null, html);
         });
 
         q.addEventListener('mouseleave', () => {
           if (!versusMode) return;
           if (isMobileView()) return;
-          hideQuadInlay(q);
+          hideVersusCellOverlay(quadCoords(q).cellIdx);
         });
 
         wrap.appendChild(q);
@@ -892,7 +904,7 @@
     }
 
     function resetVersusGrid(){
-      hideAllQuadInlays();
+      hideAllVersusCellOverlays();
       cells.forEach((c, idx) => {
         quadEls(idx).forEach(q => {
           q.classList.remove('selected');
