@@ -453,8 +453,12 @@
     }
 
     .quad img{
-      width:140%;
-      height:140%;
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      width:150%;
+      height:150%;
       object-fit:contain;
       filter: drop-shadow(0 8px 12px rgba(0,0,0,.42));
       z-index:2;
