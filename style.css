@@ -413,7 +413,7 @@
        Auswahl dauerhaft sichtbar, obwohl im Versus-Modus die Quads selbst
        ihre eigene .quad.selected-Markierung haben. */
     body.versus-mode .cell.selected{
-      background:none;
+      background: rgba(255,255,255,.045);
       border-color: rgba(255,255,255,.11);
       box-shadow:none;
     }
