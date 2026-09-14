@@ -638,6 +638,81 @@
     }
 
     // ===== VERSUS MODE =====
+
+    // Die Sprites sitzen alle auf einer gleich großen, transparenten Leinwand,
+    // aber kleine Pokémon nehmen davon viel weniger Fläche ein als große -
+    // bei einer reinen prozentualen Vergrößerung des ganzen Bildes bleiben
+    // sie dadurch trotzdem klein. Also wird der tatsächliche (nicht-
+    // transparente) Bildinhalt per Canvas erkannt und das Sprite darauf
+    // zugeschnitten (gecacht pro URL), bevor object-fit:contain es einpasst -
+    // damit füllt jedes Pokémon sein Viertel ähnlich weit aus.
+    const spriteCropCache = new Map(); // url -> Promise<string> (data-URL oder Original als Fallback)
+    function getCroppedSpriteUrl(url){
+      let p = spriteCropCache.get(url);
+      if (p) return p;
+      p = new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try{
+            const w = img.naturalWidth, h = img.naturalHeight;
+            if (!w || !h) { resolve(url); return; }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const data = ctx.getImageData(0, 0, w, h).data;
+
+            const ALPHA_THRESHOLD = 10;
+            let minX = w, minY = h, maxX = -1, maxY = -1;
+            for (let y = 0; y < h; y++){
+              const rowStart = y * w * 4;
+              for (let x = 0; x < w; x++){
+                const a = data[rowStart + x * 4 + 3];
+                if (a > ALPHA_THRESHOLD){
+                  if (x < minX) minX = x;
+                  if (x > maxX) maxX = x;
+                  if (y < minY) minY = y;
+                  if (y > maxY) maxY = y;
+                }
+              }
+            }
+
+            if (maxX < minX || maxY < minY){ resolve(url); return; }
+
+            const cw = maxX - minX + 1, ch = maxY - minY + 1;
+            const pad = Math.round(Math.max(cw, ch) * 0.04);
+            const sx = Math.max(0, minX - pad);
+            const sy = Math.max(0, minY - pad);
+            const sw = Math.min(w - sx, cw + pad * 2);
+            const sh = Math.min(h - sy, ch + pad * 2);
+
+            const out = document.createElement('canvas');
+            out.width = sw; out.height = sh;
+            out.getContext('2d').drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+            resolve(out.toDataURL('image/png'));
+          }catch{
+            resolve(url); // z.B. CORS-Problem -> unverändertes Original nutzen
+          }
+        };
+        img.onerror = () => resolve(url);
+        img.src = url;
+      });
+      spriteCropCache.set(url, p);
+      return p;
+    }
+
+    // Zeigt das Sprite sofort unbeschnitten an (kein Warten/Flackern) und
+    // tauscht es aus, sobald der zugeschnittene Ausschnitt fertig ist -
+    // sofern das <img> zu diesem Zeitpunkt noch im DOM hängt (nicht
+    // zwischenzeitlich durch eine andere Auswahl ersetzt wurde).
+    function setSpriteImage(imgEl, url){
+      imgEl.src = url;
+      getCroppedSpriteUrl(url).then(croppedUrl => {
+        if (imgEl.isConnected) imgEl.src = croppedUrl;
+      });
+    }
+
     function quadEls(cellIdx){
       return Array.from(cells[cellIdx].querySelectorAll('.versusQuads .quad'));
     }
@@ -841,8 +916,8 @@
       q.innerHTML = '';
       const img = document.createElement('img');
       img.alt = entry.display;
-      img.src = url;
       q.appendChild(img);
+      setSpriteImage(img, url);
 
       versusData[cellIdx][quad] = { pid: entry.id, pokeKey };
 
@@ -960,8 +1035,8 @@
             q.innerHTML = '';
             const img = document.createElement('img');
             img.alt = d.pokeKey;
-            img.src = IMG_URL(d.pid);
             q.appendChild(img);
+            setSpriteImage(img, IMG_URL(d.pid));
           });
         });
       }catch{}
