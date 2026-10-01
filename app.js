@@ -218,7 +218,7 @@
       let name = String(filename || '').split(/[\\/]/).pop().replace(/\.json$/i,'').trim();
       const dashIdx = name.indexOf('-');
       if (dashIdx !== -1) name = name.slice(0, dashIdx);
-      name = name.replace(/^\s*\(\d+\)\s*/, '').trim();
+      name = name.replace(/\s*\(\d+\)\s*/g, ' ').trim();
       return name;
     }
 
