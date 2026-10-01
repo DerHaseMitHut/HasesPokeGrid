@@ -215,7 +215,11 @@
     }
 
     function baseNameNoExt(filename){
-      return String(filename || '').split(/[\\/]/).pop().replace(/\.json$/i,'').trim();
+      let name = String(filename || '').split(/[\\/]/).pop().replace(/\.json$/i,'').trim();
+      const dashIdx = name.indexOf('-');
+      if (dashIdx !== -1) name = name.slice(0, dashIdx);
+      name = name.replace(/^\s*\(\d+\)\s*/, '').trim();
+      return name;
     }
 
     function escapeHtml(s){
